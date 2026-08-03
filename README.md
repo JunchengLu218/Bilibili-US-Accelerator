@@ -12,15 +12,21 @@ Akamai 分片保持原样，避免 Akamai 专用签名或 Range 与 UPOS 镜像�
 
 ## 一键安装
 
-[在 Loon 中安装](https://www.nsloon.com/openloon/import?plugin=https%3A%2F%2Fraw.githubusercontent.com%2FJunchengLu218%2FBiliBili-CDN-NYC-Fix%2Fmain%2FBiliBili-CDN-NYC-Fix-Loon-3.5.0.plugin)
+[在 Loon 中安装稳定版](https://www.nsloon.com/openloon/import?plugin=https%3A%2F%2Fgithub.com%2FJunchengLu218%2FBiliBili-CDN-NYC-Fix%2Freleases%2Flatest%2Fdownload%2FBiliBili-CDN-NYC-Fix-Loon-3.5.0.plugin)
 
 也可以在 Loon 的插件页面添加下面的远程 URL：
 
 ```text
-https://raw.githubusercontent.com/JunchengLu218/BiliBili-CDN-NYC-Fix/main/BiliBili-CDN-NYC-Fix-Loon-3.5.0.plugin
+https://github.com/JunchengLu218/BiliBili-CDN-NYC-Fix/releases/latest/download/BiliBili-CDN-NYC-Fix-Loon-3.5.0.plugin
 ```
 
 > 如果之前安装的是本地文件版，请先停用或删除本地版本，再使用上面的远程 URL 安装。只有远程订阅版本才能从 GitHub 获取后续更新。
+
+需要提前测试尚未发布的改动时，可以临时使用 `main` 开发地址：
+
+```text
+https://raw.githubusercontent.com/JunchengLu218/BiliBili-CDN-NYC-Fix/main/BiliBili-CDN-NYC-Fix-Loon-3.5.0.plugin
+```
 
 ## 推荐设置
 
@@ -33,7 +39,7 @@ https://raw.githubusercontent.com/JunchengLu218/BiliBili-CDN-NYC-Fix/main/BiliBi
 
 ## 更新
 
-远程插件 URL 永久保持不变。仓库更新后：
+稳定版插件 URL 永久保持不变。发布新版本后：
 
 1. 在 Loon 中开启该插件资源的自动更新或设置更新间隔。
 2. 也可以点击插件页面的更新按钮。
@@ -49,7 +55,15 @@ Loon 拉取更新后，可以在插件详情中查看 `#!version` 是否发生�
 2. 提高文件头部的 `#!version`，例如 `1.2.0` → `1.2.1`。
 3. 在 `CHANGELOG.md` 记录变更和测试结果。
 4. 运行 `./scripts/validate.sh`。
-5. 提交并推送到 `main`；Loon 的远程地址不需要修改。
+5. 提交并推送到 `main`。
+6. 创建与插件版本一致的标签并推送，例如：
+
+   ```bash
+   git tag v1.2.1
+   git push origin main v1.2.1
+   ```
+
+GitHub Actions 会验证标签与 `#!version` 一致，并自动创建 Release、上传插件文件。Loon 的稳定版远程地址不需要修改。
 
 建议任何 CDN 调整都先确认以下三类视频：普通 4K、杜比/高码率、原始 Akamai 地址。不要把包含 `upsig`、`hmac`、`mid`、`buvid` 等完整查询参数的请求截图提交到 Issue。
 

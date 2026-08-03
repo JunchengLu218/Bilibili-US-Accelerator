@@ -1,0 +1,31 @@
+name: Publish stable release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate stable Loon plugin
+        run: ./scripts/validate.sh
+      - name: Verify tag matches plugin version
+        shell: bash
+        run: |
+          version="$(sed -n 's/^#!version = //p' BiliBili-CDN-NYC-Fix-Loon-3.5.0.plugin)"
+          test "v${version}" = "${GITHUB_REF_NAME}"
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            BiliBili-CDN-NYC-Fix-Loon-3.5.0.plugin \
+            --verify-tag \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes
