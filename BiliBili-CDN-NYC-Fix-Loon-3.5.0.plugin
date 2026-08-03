@@ -1,0 +1,21 @@
+#!name = BiliBili CDN NYC Fix (Loon 3.5.0)
+#!desc = Loon 3.5.0 固定安全版。将普通 Bilibili UPOS/HK 视频 CDN 固定改写到 mirrorali；Akamai 保持原样，避免签名/Range 不匹配造成花屏。
+#!author = Codex (based on BiliUniverse/Redirect issue #10)
+#!homepage = https://github.com/BiliUniverse/Redirect/issues/10
+#!tag = BiliBili,CDN,NYC
+#!system = iOS,iPadOS
+#!system_version = 15
+#!version = 1.2.0
+
+[General]
+# 强制把 Bilibili 常见明文/非标准端口连接交给 HTTP 引擎。
+# 使用 *:port 是 BiliUniverse Loon 插件本身采用的兼容格式。
+force-http-engine-hosts = *:80, *:4480, *:4483, *:8000, *:8082, *:9102
+
+[Rewrite]
+# Loon 3.5.0 旧语法：匹配部分只覆盖 scheme://host[:port]，后续路径与查询参数会原样保留。
+^http:\/\/(?:upos-[a-z0-9-]+\.bilivideo\.com|cn-hk-eq-[a-z0-9-]+\.bilivideo\.com)(?::[0-9]{1,5})? header http://upos-sz-mirrorali.bilivideo.com
+^https:\/\/(?:upos-[a-z0-9-]+\.bilivideo\.com|cn-hk-eq-[a-z0-9-]+\.bilivideo\.com)(?::[0-9]{1,5})? header https://upos-sz-mirrorali.bilivideo.com
+
+[MITM]
+hostname = upos-sz-mirror*.bilivideo.com, upos-tf-all-*.bilivideo.com, cn-hk-eq-*.bilivideo.com

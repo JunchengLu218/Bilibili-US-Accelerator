@@ -1,0 +1,42 @@
+name: 播放问题
+description: 报告卡顿、未改写或花屏问题；请勿上传完整签名 URL。
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请先确认只启用了本仓库这一份 Bilibili CDN 插件。截图时请遮住 URL `?` 后面的全部参数。
+  - type: input
+    id: loon
+    attributes:
+      label: Loon 版本和 build
+      placeholder: 例如 3.5.0 (969)
+    validations:
+      required: true
+  - type: dropdown
+    id: source
+    attributes:
+      label: 原始媒体主机类型
+      options:
+        - 普通 UPOS / bilivideo.com
+        - Akamai / akamaized.net
+        - MCDN / PCDN
+        - 不确定
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: 现象与复现步骤
+      description: 不要粘贴完整签名 URL；只保留主机名即可。
+    validations:
+      required: true
+  - type: textarea
+    id: checks
+    attributes:
+      label: 已完成的检查
+      value: |
+        - [ ] 已停用其他 Bilibili Rewrite/脚本
+        - [ ] 已完全退出并重开 Bilibili App
+        - [ ] Akamai 地址没有被改写
