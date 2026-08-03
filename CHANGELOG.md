@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.0 - 2026-08-03
+## 0.1.0 - 2026-08-03
 
 - 固定普通 Bilibili UPOS/HK 视频 CDN 到 `upos-sz-mirrorali.bilivideo.com`。
 - 保留原始协议、路径、Range 和查询参数。

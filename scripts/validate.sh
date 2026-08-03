@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-plugin="BiliBili-CDN-NYC-Fix-Loon-3.5.0.plugin"
+plugin="Bilibili-US-Accelerator.plugin"
 
 test -f "$plugin"
 grep -Eq '^#!version = [0-9]+\.[0-9]+\.[0-9]+$' "$plugin"
