@@ -15,13 +15,24 @@ body:
     validations:
       required: true
   - type: dropdown
+    id: app
+    attributes:
+      label: App
+      options:
+        - 普通版
+        - 国际版 BStar
+        - 两者都有
+    validations:
+      required: true
+  - type: dropdown
     id: source
     attributes:
-      label: 原始媒体主机类型
+      label: 卡顿时的原始媒体主机类型
       options:
         - 普通 UPOS / bilivideo.com
         - Akamai / akamaized.net
         - MCDN / PCDN
+        - 国际版 BStar Akamai
         - 不确定
     validations:
       required: true
@@ -29,7 +40,7 @@ body:
     id: behavior
     attributes:
       label: 现象与复现步骤
-      description: 不要粘贴完整签名 URL；只保留主机名即可。
+      description: 不要粘贴完整签名 URL；只保留主机名即可。速度不稳请写清 0KB 与正常时的 Host。
     validations:
       required: true
   - type: textarea
@@ -37,6 +48,9 @@ body:
     attributes:
       label: 已完成的检查
       value: |
+        - [ ] 已按 docs/SPEED-TEST.md 做开关插件 A/B
         - [ ] 已停用其他 Bilibili Rewrite/脚本
         - [ ] 已完全退出并重开 Bilibili App
-        - [ ] Akamai 地址没有被改写
+        - [ ] 已关闭 iCloud 专用代理
+        - [ ] Akamai / BStar 地址没有被改写
+        - [ ] MCDN（若出现）已变为 proxy-tf-all-ws.bilivideo.com

@@ -1,11 +1,11 @@
 #!name = Bilibili US Accelerator
-#!desc = 将普通 Bilibili 视频 CDN 固定改写到 mirrorali；Akamai 保持原样，避免签名/Range 不匹配造成花屏。
+#!desc = 将普通 Bilibili 视频 CDN 固定改写到 mirrorali；MCDN 改写到官方中转；Akamai/BStar 保持原样，避免签名/Range 不匹配造成花屏。
 #!author = JunchengLu & Codex (based on BiliUniverse/Redirect issue #10)
 #!homepage = https://github.com/JunchengLu218/BiliBili-US-Accelerator
 #!tag = Bilibili,CDN,accelerator
 #!system = iOS,iPadOS
 #!system_version = 15
-#!version = 0.1.0
+#!version = 0.2.0
 
 [General]
 # 强制把 Bilibili 常见明文/非标准端口连接交给 HTTP 引擎。
@@ -16,6 +16,9 @@ force-http-engine-hosts = *:80, *:4480, *:4483, *:8000, *:8082, *:9102
 # Loon 3.5.0 旧语法：匹配部分只覆盖 scheme://host[:port]，后续路径与查询参数会原样保留。
 ^http:\/\/(?:upos-[a-z0-9-]+\.bilivideo\.com|cn-hk-eq-[a-z0-9-]+\.bilivideo\.com)(?::[0-9]{1,5})? header http://upos-sz-mirrorali.bilivideo.com
 ^https:\/\/(?:upos-[a-z0-9-]+\.bilivideo\.com|cn-hk-eq-[a-z0-9-]+\.bilivideo\.com)(?::[0-9]{1,5})? header https://upos-sz-mirrorali.bilivideo.com
+# MCDN/PCDN 家宽节点在海外常表现为长时间 0KB；改到官方中转域名。
+^http:\/\/[a-z0-9]+\.mcdn\.bilivideo\.(?:cn|com|net)(?::[0-9]{1,5})? header http://proxy-tf-all-ws.bilivideo.com
+^https:\/\/[a-z0-9]+\.mcdn\.bilivideo\.(?:cn|com|net)(?::[0-9]{1,5})? header https://proxy-tf-all-ws.bilivideo.com
 
 [MITM]
-hostname = upos-sz-mirror*.bilivideo.com, upos-tf-all-*.bilivideo.com, cn-hk-eq-*.bilivideo.com
+hostname = upos-sz-mirror*.bilivideo.com, upos-tf-all-*.bilivideo.com, cn-hk-eq-*.bilivideo.com, *.mcdn.bilivideo.cn, *.mcdn.bilivideo.com, *.mcdn.bilivideo.net, proxy-tf-all-ws.bilivideo.com
