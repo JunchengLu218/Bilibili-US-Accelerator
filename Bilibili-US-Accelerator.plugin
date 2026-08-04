@@ -1,11 +1,11 @@
-#!name = Bilibili US Accelerator
-#!desc = 将普通 Bilibili 视频 CDN 固定改写到 mirrorali；Akamai 保持原样，避免签名/Range 不匹配造成花屏。
+#!name = Bilibili US Accelerator (BStar Test)
+#!desc = 【测试】普通版 UPOS→mirrorali；国际版 BStar Akamai→mirrorali。可能花屏/403，仅供对照测试，勿当稳定版。
 #!author = JunchengLu & Codex (based on BiliUniverse/Redirect issue #10)
 #!homepage = https://github.com/JunchengLu218/BiliBili-US-Accelerator
-#!tag = Bilibili,CDN,accelerator
+#!tag = Bilibili,CDN,accelerator,experimental
 #!system = iOS,iPadOS
 #!system_version = 15
-#!version = 0.1.0
+#!version = 0.2.0
 
 [General]
 # 强制把 Bilibili 常见明文/非标准端口连接交给 HTTP 引擎。
@@ -16,6 +16,9 @@ force-http-engine-hosts = *:80, *:4480, *:4483, *:8000, *:8082, *:9102
 # Loon 3.5.0 旧语法：匹配部分只覆盖 scheme://host[:port]，后续路径与查询参数会原样保留。
 ^http:\/\/(?:upos-[a-z0-9-]+\.bilivideo\.com|cn-hk-eq-[a-z0-9-]+\.bilivideo\.com)(?::[0-9]{1,5})? header http://upos-sz-mirrorali.bilivideo.com
 ^https:\/\/(?:upos-[a-z0-9-]+\.bilivideo\.com|cn-hk-eq-[a-z0-9-]+\.bilivideo\.com)(?::[0-9]{1,5})? header https://upos-sz-mirrorali.bilivideo.com
+# 【实验】国际版 BStar Akamai → 与普通版相同的 mirrorali。跨 CDN，观察花屏/403/速度。
+^http:\/\/upos-bstar[0-9]*-mirrorakam\.akamaized\.net(?::[0-9]{1,5})? header http://upos-sz-mirrorali.bilivideo.com
+^https:\/\/upos-bstar[0-9]*-mirrorakam\.akamaized\.net(?::[0-9]{1,5})? header https://upos-sz-mirrorali.bilivideo.com
 
 [MITM]
-hostname = upos-sz-mirror*.bilivideo.com, upos-tf-all-*.bilivideo.com, cn-hk-eq-*.bilivideo.com
+hostname = upos-sz-mirror*.bilivideo.com, upos-tf-all-*.bilivideo.com, cn-hk-eq-*.bilivideo.com, upos-bstar*-mirrorakam.akamaized.net

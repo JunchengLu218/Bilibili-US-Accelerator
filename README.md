@@ -1,51 +1,48 @@
-# Bilibili US Accelerator for Loon
+# Bilibili US Accelerator for Loon（BStar 测试分支）
 
-给纽约及北美网络环境使用的 Bilibili 官方 iOS/iPadOS App CDN 固定改写插件。
+> **这是测试分支，不是稳定版。** 国际版 BStar 改写可能出现花屏、403 或无加速。日常请继续用 [main / Releases](https://github.com/JunchengLu218/Bilibili-US-Accelerator/releases/latest)。
 
-当前稳定版会把普通 Bilibili UPOS/HK 视频分片固定改写到：
+在普通版 UPOS→`mirrorali` 之外，额外把国际版：
+
+```text
+upos-bstar-mirrorakam.akamaized.net
+upos-bstar1-mirrorakam.akamaized.net
+```
+
+改写到与普通版相同的：
 
 ```text
 upos-sz-mirrorali.bilivideo.com
 ```
 
-Akamai 分片保持原样，避免 Akamai 专用签名或 Range 与 UPOS 镜像不匹配造成花屏。
+普通港澳台 Akamai（`upos-hz-mirrorakam` 等）仍不改写。
 
-## 一键安装
+## 安装测试版
 
-[在 Loon 中安装稳定版](https://www.nsloon.com/openloon/import?plugin=https%3A%2F%2Fgithub.com%2FJunchengLu218%2FBilibili-US-Accelerator%2Freleases%2Flatest%2Fdownload%2FBilibili-US-Accelerator.plugin)
-
-也可以在 Loon 的插件页面添加下面的远程 URL：
+Loon 插件远程 URL（指向本分支）：
 
 ```text
-https://github.com/JunchengLu218/Bilibili-US-Accelerator/releases/latest/download/Bilibili-US-Accelerator.plugin
+https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/cursor/bstar-rewrite-test-9152/Bilibili-US-Accelerator.plugin
 ```
 
-```text
-https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/main/Bilibili-US-Accelerator.plugin
-```
+[在 Loon 中安装本测试分支](https://www.nsloon.com/openloon/import?plugin=https%3A%2F%2Fraw.githubusercontent.com%2FJunchengLu218%2FBilibili-US-Accelerator%2Fcursor%2Fbstar-rewrite-test-9152%2FBilibili-US-Accelerator.plugin)
+
+安装后：停用稳定版插件 → 启用本测试插件 → 完全退出国际版 App 再打开。
+
+## 怎么判断有没有生效
+
+1. 用**家庭 WiFi 或移动网络**测（公寓 WiFi 先排除）。
+2. Loon 请求里，国际版分片的「修改后的链接」应为 `upos-sz-mirrorali.bilivideo.com`。
+3. 记录：能否播、速度、是否花屏/绿屏、是否大量 403。
+4. 出问题立即切回稳定版。
 
 ## 推荐设置
 
 - Loon 代理模式：`TUN Only`
 - Loon 流量模式：`自动分流`
 - MitM 证书：已安装并在系统中完全信任
-
-安装后完全退出 Bilibili App 再重新打开。普通 UPOS 视频的请求记录中，“修改后的链接”应使用 `upos-sz-mirrorali.bilivideo.com`；`upos-*-mirrorakam.akamaized.net` 应保持原样。
-
-## 更新
-
-稳定版插件 URL 永久保持不变。发布新版本后：
-
-1. 在 Loon 中开启该插件资源的自动更新或设置更新间隔。
-2. 也可以点击插件页面的更新按钮。
-3. 或打开 [更新所有 Loon 订阅资源](https://www.nsloon.com/openloon/update?sub=all)。
-
-Loon 拉取更新后，可以在插件详情中查看 `#!version` 是否发生变化。
-
-## 致谢
-
-问题定位参考了 [BiliUniverse/Redirect issue #10](https://github.com/BiliUniverse/Redirect/issues/10) 以及 [bilibili-accelerator](https://github.com/realzza/bilibili-accelerator) 的 CDN 分类思路。
+- 不要同时启用 BiliUniverse Redirect 等其它 Bilibili CDN 改写
 
 ## 免责声明
 
-本项目是个人网络兼容性配置，与哔哩哔哩、Loon 或上述开源项目均无隶属关系。请遵守当地法律、平台条款和内容授权规则。
+本分支仅用于个人对照测试，与哔哩哔哩、Loon 均无隶属关系。请遵守当地法律、平台条款和内容授权规则。

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0 - 2026-08-04（BStar 测试分支）
+
+- **实验**：将国际版 BStar（`upos-bstar*-mirrorakam.akamaized.net`）改写到 `upos-sz-mirrorali.bilivideo.com`。
+- 普通版 UPOS/HK 行为与 0.1.0 相同。
+- 仍不改写 `upos-hz-mirrorakam` 等非 BStar Akamai。
+- 可能花屏/403；仅供测试，不作为稳定发布。
+
 ## 0.1.0 - 2026-08-03
 
 - 固定普通 Bilibili UPOS/HK 视频 CDN 到 `upos-sz-mirrorali.bilivideo.com`。
