@@ -38,7 +38,6 @@ http-request ^https?:\/\/[^/]+\.bilivideo\.com(?::[0-9]{1,5})?\/live-bvc\/ scrip
 http-request ^https?:\/\/(?:upos-[a-z0-9-]+|cn-hk-eq-[a-z0-9-]+)\.bilivideo\.com(?::[0-9]{1,5})?\/upgcxcode\/ script-path=https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/main/scripts/bilibili-auto-cdn.js,tag=Bilibili UPOS 分类与改写,timeout=20,argument=[{Mode},{Candidates},{BStarAsStandard},{PCDNStrategy},{MCDNStrategy},{RewriteAkamai},{LiveStrategy},{ProbeBytes},{TimeoutMs},{Rounds},{CacheMinutes},{Route},{LogLevel}]
 
 # 播放视频捕获样本后，在“仪表 -> 所有节点”中长按任一节点，再点此测速操作。
-# `.system` 告诉 Loon 这是 SF Symbol，不是普通图片 URL；enable=true 明确启用该入口。
 generic script-path=https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/main/scripts/bilibili-auto-cdn.js,tag=Bilibili CDN 测速并应用,timeout=120,img-url=atom.system,enable=true,argument=[{Mode},{Candidates},{BStarAsStandard},{PCDNStrategy},{MCDNStrategy},{RewriteAkamai},{LiveStrategy},{ProbeBytes},{TimeoutMs},{Rounds},{CacheMinutes},{Route},{LogLevel}]
 
 [MITM]
