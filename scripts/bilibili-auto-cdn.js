@@ -760,6 +760,39 @@
     }
   }
 
+  /*
+   * A generic script is opened as a result page inside Loon.  Calling
+   * `$done()` without a payload closes the JavaScript engine correctly, but
+   * that page can only display "empty content".  Return the same information
+   * as the notification so users can always see what happened, even when iOS
+   * notification permission is disabled.
+   */
+  function escapeHtml(value) {
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function genericResult(title, subtitle, content) {
+    return {
+      title: title,
+      htmlMessage:
+        '<div style="font-family:-apple-system;line-height:1.45;padding:8px">' +
+        '<p><strong>' + escapeHtml(subtitle) + '</strong></p>' +
+        '<pre style="white-space:pre-wrap;word-break:break-word;font-family:-apple-system">' +
+        escapeHtml(content) +
+        "</pre></div>"
+    };
+  }
+
+  function finishManual(runtime, title, subtitle, content) {
+    notify(runtime.notification, title, subtitle, content);
+    runtime.done(genericResult(title, subtitle, content));
+  }
+
   function benchmarkSerially(capture, settings, httpClient, logger, callback) {
     var rangeInfo = buildFixedProbeRange(capture.range, settings.probeBytes);
     if (!rangeInfo) {
@@ -994,47 +1027,43 @@
     var capture = findLatestCapture(runtime.storage, runtime.network.key, now);
 
     if (!runtime.httpClient || typeof runtime.httpClient.get !== "function") {
-      notify(
-        runtime.notification,
+      finishManual(
+        runtime,
         "Bilibili CDN 无法开始测速",
         runtime.network.label,
         "当前脚本环境没有可用的 $httpClient.get API。"
       );
-      runtime.done();
       return;
     }
 
     if (!capture) {
-      notify(
-        runtime.notification,
+      finishManual(
+        runtime,
         "Bilibili CDN 暂无可测速样本",
         runtime.network.label,
         "请先在哔哩哔哩中播放一个未缓存片段，并在 5 分钟内再次运行本脚本。"
       );
-      runtime.done();
       return;
     }
 
     if (!profileAllowed(capture.profile, settings)) {
-      notify(
-        runtime.notification,
+      finishManual(
+        runtime,
         "Bilibili CDN 样本已被当前设置禁用",
         runtime.network.label + " / " + capture.profile,
         "请播放当前设置允许处理的分片，再重新运行测速。"
       );
-      runtime.done();
       return;
     }
 
     var owner = acquireLock(runtime.storage, runtime.network.key, capture.profile, settings, now);
     if (!owner) {
-      notify(
-        runtime.notification,
+      finishManual(
+        runtime,
         "Bilibili CDN 测速正在运行",
         runtime.network.label + " / " + capture.profile,
         "检测到尚未过期的测速锁，请稍后再试。"
       );
-      runtime.done();
       return;
     }
 
@@ -1044,44 +1073,40 @@
 
       if (error) {
         runtime.logger.warn("Benchmark stopped: " + safeErrorText(error));
-        notify(
-          runtime.notification,
+        finishManual(
+          runtime,
           "Bilibili CDN 测速未完成",
           runtime.network.label + " / " + capture.profile,
           safeErrorText(error) + "。原始播放路线未被修改。"
         );
-        runtime.done();
         return;
       }
 
       var best = chooseBest(ranking, capture.sourceHost);
       if (!best) {
         expireCapture(runtime.storage, runtime.network.key, capture.profile);
-        notify(
-          runtime.notification,
+        finishManual(
+          runtime,
           "Bilibili CDN 测速全部失败",
           runtime.network.label + " / " + capture.profile,
           "没有候选通过 206、Content-Range 和二进制长度检查；原始播放路线未被修改。"
         );
-        runtime.done();
         return;
       }
 
       if (!saveResult(runtime.storage, runtime.network.key, capture, settings, ranking, best, finishedAt)) {
-        notify(
-          runtime.notification,
+        finishManual(
+          runtime,
           "Bilibili CDN 结果保存失败",
           runtime.network.label + " / " + capture.profile,
           "测速已完成，但无法写入 Loon 本地存储；原始播放路线未被修改。"
         );
-        runtime.done();
         return;
       }
 
       expireCapture(runtime.storage, runtime.network.key, capture.profile);
       var notice = rankingNotification(runtime.network, capture, ranking, best, settings.cacheMinutes);
-      notify(runtime.notification, "Bilibili CDN 测速完成", notice.subtitle, notice.content);
-      runtime.done();
+      finishManual(runtime, "Bilibili CDN 测速完成", notice.subtitle, notice.content);
     });
   }
 
@@ -1168,8 +1193,7 @@
     logger.warn("Unhandled error: " + safeErrorText(error));
     if (typeof $request !== "undefined") finish({});
     else {
-      notify(runtime.notification, "Bilibili CDN 脚本异常", runtime.network.label, safeErrorText(error));
-      finish();
+      finishManual(runtime, "Bilibili CDN 脚本异常", runtime.network.label, safeErrorText(error));
     }
   }
 }());

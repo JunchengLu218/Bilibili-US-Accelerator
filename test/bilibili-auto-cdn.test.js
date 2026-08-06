@@ -455,6 +455,23 @@ test("serial benchmark sends one job at a time and returns a ranking", function 
   assert.strictEqual(callbackCalled, true);
 });
 
+test("manual benchmark explains missing capture in the generic result page", function () {
+  var store = memoryStore();
+  var notifications = [];
+  var outputs = [];
+  var unusedHttpClient = { get: function () { throw new Error("must not probe without a capture"); } };
+
+  core.runManualBenchmark(
+    runtimeFor(store, function (value) { outputs.push(value); }, unusedHttpClient, notifications),
+    settings({})
+  );
+
+  assert.strictEqual(outputs.length, 1);
+  assert.strictEqual(outputs[0].title, "Bilibili CDN 暂无可测速样本");
+  assert.ok(outputs[0].htmlMessage.indexOf("5 分钟内") >= 0);
+  assert.strictEqual(notifications[0].title, "Bilibili CDN 暂无可测速样本");
+});
+
 test("end-to-end manual flow captures, benchmarks, caches, and rewrites the next request", function () {
   var store = memoryStore();
   var current = settings({
@@ -484,12 +501,14 @@ test("end-to-end manual flow captures, benchmarks, caches, and rewrites the next
       }, binary(current.probeBytes));
     }
   };
-  var manualDone = 0;
+  var manualOutputs = [];
   core.runManualBenchmark(
-    runtimeFor(store, function () { manualDone += 1; }, httpClient, notifications),
+    runtimeFor(store, function (value) { manualOutputs.push(value); }, httpClient, notifications),
     current
   );
-  assert.strictEqual(manualDone, 1);
+  assert.strictEqual(manualOutputs.length, 1);
+  assert.strictEqual(manualOutputs[0].title, "Bilibili CDN 测速完成");
+  assert.ok(manualOutputs[0].htmlMessage.indexOf("已选择") >= 0);
   assert.strictEqual(notifications[notifications.length - 1].title, "Bilibili CDN 测速完成");
   assert.ok(core.readValidResult(store, "wifi:test", "standard-upos", current, Date.now()));
 
@@ -514,14 +533,16 @@ test("end-to-end all-candidate failure saves no best host and preserves playback
   var notifications = [];
   core.handleRequest(runtimeFor(store, function () {}, null, notifications), source, current);
 
-  var manualDone = 0;
-  core.runManualBenchmark(runtimeFor(store, function () { manualDone += 1; }, {
+  var manualOutputs = [];
+  core.runManualBenchmark(runtimeFor(store, function (value) { manualOutputs.push(value); }, {
     get: function (_params, callback) {
       callback(null, { status: 403, headers: { "Content-Type": "text/html" } }, binary(10));
     }
   }, notifications), current);
 
-  assert.strictEqual(manualDone, 1);
+  assert.strictEqual(manualOutputs.length, 1);
+  assert.strictEqual(manualOutputs[0].title, "Bilibili CDN 测速全部失败");
+  assert.ok(manualOutputs[0].htmlMessage.indexOf("原始播放路线未被修改") >= 0);
   assert.strictEqual(notifications[notifications.length - 1].title, "Bilibili CDN 测速全部失败");
   assert.strictEqual(core.readValidResult(store, "wifi:test", "standard-upos", current, Date.now()), null);
 
@@ -610,8 +631,8 @@ test("Loon-style globals dispatch request, generic, and cached request entries",
   assert.strictEqual(firstDone.length, 1);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(firstDone[0])), {});
 
-  var genericDone = 0;
-  var genericGlobals = baseGlobals(function () { genericDone += 1; });
+  var genericOutputs = [];
+  var genericGlobals = baseGlobals(function (value) { genericOutputs.push(value); });
   genericGlobals.$httpClient = {
     get: function (params, callback) {
       var match = /^bytes=(\d+)-(\d+)$/.exec(params.headers.Range);
@@ -625,7 +646,9 @@ test("Loon-style globals dispatch request, generic, and cached request entries",
     }
   };
   vm.runInNewContext(scriptSource, genericGlobals, { filename: "bilibili-auto-cdn.js" });
-  assert.strictEqual(genericDone, 1);
+  assert.strictEqual(genericOutputs.length, 1);
+  assert.strictEqual(genericOutputs[0].title, "Bilibili CDN 测速完成");
+  assert.ok(genericOutputs[0].htmlMessage.indexOf("已选择") >= 0);
   assert.strictEqual(notices[notices.length - 1], "Bilibili CDN 测速完成");
 
   var finalDone = [];
