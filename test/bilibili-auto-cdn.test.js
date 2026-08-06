@@ -318,6 +318,10 @@ test("capture persists only minimal headers and never cookies", function () {
   var saved = core.findLatestCapture(store, "wifi:test", now + 1);
   assert.deepStrictEqual(saved.headers, { "User-Agent": "Bilibili/1" });
   assert.strictEqual(saved.range, "bytes=0-");
+  assert.strictEqual(saved.settingsSnapshotVersion, 1);
+  assert.strictEqual(saved.settingsSnapshot.ProbeBytes, String(current.probeBytes));
+  assert.strictEqual(core.settingsFromCapture(saved).probeBytes, current.probeBytes);
+  assert.strictEqual(JSON.stringify(saved.settingsSnapshot).indexOf("secret"), -1);
 });
 
 test("captures and results stay isolated by network and profile", function () {
@@ -495,6 +499,64 @@ test("manual benchmark explains missing capture in the generic result page", fun
   assert.strictEqual(outputs[0].title, "Bilibili CDN 暂无可测速样本");
   assert.ok(outputs[0].htmlMessage.indexOf("5 分钟内") >= 0);
   assert.strictEqual(notifications[0].title, "Bilibili CDN 暂无可测速样本");
+});
+
+test("manual benchmark reuses the request settings snapshot when generic arguments differ", function () {
+  var store = memoryStore();
+  var requestSettings = settings({
+    Candidates: "upos-tf-all-tx.bilivideo.com",
+    ProbeBytes: "2097152",
+    TimeoutMs: "5000",
+    Rounds: "3",
+    CacheMinutes: "60"
+  });
+  var genericFallbackSettings = settings({});
+  var source = request(
+    "http://upos-sz-mirrorcosov.bilivideo.com/upgcxcode/a.m4s?upsig=secret",
+    { Range: "bytes=97111-201158" }
+  );
+  var notifications = [];
+
+  core.handleRequest(
+    runtimeFor(store, function () {}, null, notifications),
+    source,
+    requestSettings
+  );
+
+  var calls = [];
+  var outputs = [];
+  core.runManualBenchmark(runtimeFor(store, function (value) { outputs.push(value); }, {
+    get: function (params, callback) {
+      calls.push(params);
+      var range = core.buildFixedProbeRange("bytes=97111-201158", requestSettings.probeBytes);
+      callback(null, {
+        status: 206,
+        headers: {
+          "Content-Range": "bytes " + range.start + "-" + range.end + "/9999999",
+          "Content-Type": "video/mp4"
+        }
+      }, binary(requestSettings.probeBytes));
+    }
+  }, notifications), genericFallbackSettings);
+
+  assert.strictEqual(calls.length, 3);
+  assert.strictEqual(calls[0].headers.Range, "bytes=97111-2194262");
+  assert.strictEqual(outputs[0].title, "Bilibili CDN 测速完成");
+  assert.ok(outputs[0].htmlMessage.indexOf("来自请求快照") >= 0);
+  assert.ok(core.readValidResult(store, "wifi:test", "standard-upos", requestSettings, Date.now()));
+  assert.strictEqual(
+    core.readValidResult(store, "wifi:test", "standard-upos", genericFallbackSettings, Date.now()),
+    null
+  );
+
+  var rewritten = [];
+  core.handleRequest(
+    runtimeFor(store, function (value) { rewritten.push(value); }, null, notifications),
+    source,
+    requestSettings
+  );
+  assert.strictEqual(rewritten[0].url,
+    "http://upos-tf-all-tx.bilivideo.com/upgcxcode/a.m4s?upsig=secret");
 });
 
 test("end-to-end manual flow captures, benchmarks, caches, and rewrites the next request", function () {

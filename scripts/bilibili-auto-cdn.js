@@ -16,8 +16,8 @@
 (function () {
   "use strict";
 
-  var SCHEMA_VERSION = 2;
-  var STORE_PREFIX = "bili_auto_cdn:v2";
+  var SCHEMA_VERSION = 3;
+  var STORE_PREFIX = "bili_auto_cdn:v3";
   var LAST_RESULT_SUMMARY_KEY = STORE_PREFIX + ":last-result-summary";
   var PROBE_HEADER = "X-Bili-CDN-Probe";
   var CAPTURE_TTL_MS = 5 * 60 * 1000;
@@ -157,6 +157,37 @@
       route: route,
       logLevel: String(getArgument(raw, "LogLevel") || "WARN").toUpperCase()
     };
+  }
+
+  /*
+   * Loon 3.5.0 can expose the same plugin arguments differently to a manual
+   * generic action and an automatic http-request entry.  Save a normalized,
+   * non-secret snapshot with the captured media request so the later manual
+   * benchmark uses exactly the settings that the request path will validate.
+   */
+  function snapshotSettings(settings) {
+    return {
+      Mode: "manual",
+      Candidates: settings.candidates.join(","),
+      BStarAsStandard: settings.bStarAsStandard,
+      PCDNStrategy: settings.pcdnStrategy,
+      MCDNStrategy: settings.mcdnStrategy,
+      RewriteAkamai: settings.rewriteAkamai,
+      LiveStrategy: settings.liveStrategy,
+      ProbeBytes: String(settings.probeBytes),
+      TimeoutMs: String(settings.timeoutMs),
+      Rounds: String(settings.rounds),
+      CacheMinutes: String(settings.cacheMinutes),
+      Route: settings.route,
+      LogLevel: settings.logLevel
+    };
+  }
+
+  function settingsFromCapture(capture) {
+    if (!capture || capture.settingsSnapshotVersion !== 1 || !capture.settingsSnapshot) return null;
+    var restored = parseSettings(capture.settingsSnapshot);
+    if (settingsFingerprint(restored, capture.profile) !== capture.settingsFingerprint) return null;
+    return restored;
   }
 
   /**
@@ -621,7 +652,9 @@
       headers: safeHeaders,
       capturedAt: now,
       expiresAt: now + CAPTURE_TTL_MS,
-      settingsFingerprint: settingsFingerprint(settings, profile)
+      settingsFingerprint: settingsFingerprint(settings, profile),
+      settingsSnapshotVersion: 1,
+      settingsSnapshot: snapshotSettings(settings)
     };
 
     return writeJson(storage, storeKey("capture", networkKey, profile), capture);
@@ -1115,6 +1148,24 @@
       return;
     }
 
+    var capturedSettings = settingsFromCapture(capture);
+    if (!capturedSettings) {
+      expireCapture(runtime.storage, runtime.network.key, capture.profile);
+      finishManual(
+        runtime,
+        "Bilibili CDN 样本设置无效",
+        runtime.network.label + " / " + capture.profile,
+        "捕获样本缺少可信的设置快照，请重新播放一个未缓存片段后再测速。"
+      );
+      return;
+    }
+    if (settingsFingerprint(settings, capture.profile) !== capture.settingsFingerprint) {
+      runtime.logger.warn(
+        "Generic arguments differ from captured request settings; use the validated capture snapshot"
+      );
+    }
+    settings = capturedSettings;
+
     if (!profileAllowed(capture.profile, settings)) {
       finishManual(
         runtime,
@@ -1194,6 +1245,7 @@
       var notice = rankingNotification(runtime.network, capture, ranking, best, settings.cacheMinutes);
       notice.content += "\n缓存网络: " + runtime.network.key;
       notice.content += "\n设置指纹: " + shortFingerprint(savedInspection.currentFingerprint);
+      notice.content += "\n测速配置: 来自请求快照";
       finishManual(runtime, "Bilibili CDN 测速完成", notice.subtitle, notice.content);
     });
   }
@@ -1208,6 +1260,8 @@
       PROFILES: PROFILES.slice()
     },
     parseSettings: parseSettings,
+    snapshotSettings: snapshotSettings,
+    settingsFromCapture: settingsFromCapture,
     validateCandidateHost: validateCandidateHost,
     parseRawUrl: parseRawUrl,
     replaceHostnameOnly: replaceHostnameOnly,
