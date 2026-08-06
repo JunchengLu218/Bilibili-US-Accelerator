@@ -7,7 +7,7 @@
 #!system_version = 15
 #!loon_version = 3.5.0(969)
 #!type = normal
-#!version = 0.1.0
+#!version = 0.1.1
 
 [Argument]
 # 初版只实现推荐的手动模式：先播放视频捕获样本，再从 Loon 手动运行测速脚本。
@@ -37,8 +37,9 @@ http-request ^https?:\/\/upos-(?:hz|bstar1)-mirrorakam\.akamaized\.net(?::(?:80|
 http-request ^https?:\/\/[^/]+\.bilivideo\.com(?::[0-9]{1,5})?\/live-bvc\/ script-path=https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/main/scripts/bilibili-auto-cdn.js,tag=Bilibili 直播安全放行,timeout=10,argument=[{Mode},{Candidates},{BStarAsStandard},{PCDNStrategy},{MCDNStrategy},{RewriteAkamai},{LiveStrategy},{ProbeBytes},{TimeoutMs},{Rounds},{CacheMinutes},{Route},{LogLevel}]
 http-request ^https?:\/\/(?:upos-[a-z0-9-]+|cn-hk-eq-[a-z0-9-]+)\.bilivideo\.com(?::[0-9]{1,5})?\/upgcxcode\/ script-path=https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/main/scripts/bilibili-auto-cdn.js,tag=Bilibili UPOS 分类与改写,timeout=20,argument=[{Mode},{Candidates},{BStarAsStandard},{PCDNStrategy},{MCDNStrategy},{RewriteAkamai},{LiveStrategy},{ProbeBytes},{TimeoutMs},{Rounds},{CacheMinutes},{Route},{LogLevel}]
 
-# 播放视频后，从 Loon 的脚本页面手动运行这一项，才会产生额外测速流量。
-generic script-path=https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/main/scripts/bilibili-auto-cdn.js,tag=Bilibili CDN 测速并应用,timeout=120,argument=[{Mode},{Candidates},{BStarAsStandard},{PCDNStrategy},{MCDNStrategy},{RewriteAkamai},{LiveStrategy},{ProbeBytes},{TimeoutMs},{Rounds},{CacheMinutes},{Route},{LogLevel}]
+# 播放视频捕获样本后，在“仪表 -> 所有节点”中长按任一节点，再点此测速操作。
+# img-url 让 generic 操作出现在 Loon 的长按菜单；enable=true 明确启用该入口。
+generic script-path=https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/main/scripts/bilibili-auto-cdn.js,tag=Bilibili CDN 测速并应用,timeout=120,img-url=speedometer,enable=true,argument=[{Mode},{Candidates},{BStarAsStandard},{PCDNStrategy},{MCDNStrategy},{RewriteAkamai},{LiveStrategy},{ProbeBytes},{TimeoutMs},{Rounds},{CacheMinutes},{Route},{LogLevel}]
 
 [MITM]
 # 只列出本初版明确处理的 Bilibili 视频主机族，不使用覆盖整个 bilivideo.com 的宽泛规则。

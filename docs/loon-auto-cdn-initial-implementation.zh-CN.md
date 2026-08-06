@@ -1,6 +1,6 @@
 # Bilibili US Auto Accelerator 初版源码详解
 
-> 对应版本：`Bilibili-US-Auto-Accelerator.plugin` 0.1.0  
+> 对应版本：`Bilibili-US-Auto-Accelerator.plugin` 0.1.1
 > 对应脚本：`scripts/bilibili-auto-cdn.js`  
 > 读者：第一次接触 Loon 插件或 JavaScript 的用户  
 > 状态：本地逻辑测试通过，仍需 iPhone/iPad 与目标 Loon 版本实机验证
@@ -33,7 +33,7 @@
 | `scripts/prepare-auto-test-plugin.sh` | 生成指向 GitHub 测试分支的临时插件 | 准备 iPhone/iPad 实机测试时执行 |
 | `docs/loon-auto-cdn-benchmark-design.zh-CN.md` | 完整设计、边界、后续阶段和实机验收标准 | 想知道“为什么这样设计”时阅读 |
 
-本详解中的行号对应 0.1.0 初版。以后增加代码时行号可能移动，函数名会比行号更稳定。
+本详解中的行号最初对应 0.1.0；0.1.1 补齐了 generic 手动入口的图标和显式启用参数。以后增加代码时行号可能移动，函数名会比行号更稳定。
 
 ## 三、先认识五个 Loon 对象
 
@@ -83,7 +83,7 @@
 
 位置：`Bilibili-US-Auto-Accelerator.plugin:1-10`
 
-插件名称带有 `Experimental`，版本是 `0.1.0`，最低 Loon 版本是当前 App Store 版本 `3.5.0(969)`。它与稳定版 `Bilibili-US-Accelerator.plugin` 是两个独立插件，安装实验版时应先关闭稳定版和其他 CDN 改写插件，避免同一请求被改写两次。
+插件名称带有 `Experimental`，版本是 `0.1.1`，最低 Loon 版本是当前 App Store 版本 `3.5.0(969)`。它与稳定版 `Bilibili-US-Accelerator.plugin` 是两个独立插件，安装实验版时应先关闭稳定版和其他 CDN 改写插件，避免同一请求被改写两次。
 
 本初版使用的 Loon 能力都早于 Build 969：
 
@@ -140,7 +140,7 @@
 
 它们全部加载同一个 `scripts/bilibili-auto-cdn.js`。入口正则只负责尽量收窄触发范围，脚本内部的 `classifyRequest()` 仍会重新分类。这样不能把安全边界寄托在插件规则顺序上。
 
-最后一条 `generic` 是用户手动运行的测速入口，超时设为 120 秒。按默认四候选、一轮、3 秒单项超时，理论最坏网络等待约 12 秒；三轮、5 秒单项超时最坏约 60 秒。
+最后一条 `generic` 是用户手动运行的测速入口，超时设为 120 秒。0.1.1 为它显式添加 `img-url=speedometer` 和 `enable=true`，使它能注册为 Loon 节点长按菜单里的可见操作。按默认四候选、一轮、3 秒单项超时，理论最坏网络等待约 12 秒；三轮、5 秒单项超时最坏约 60 秒。
 
 ### 5. `[MITM]`
 
@@ -561,10 +561,11 @@ https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/codex/lo
 3. 重新打开一个点播视频；
 4. 拖到一个未缓存的位置，产生新的 Range 请求；
 5. 在 5 分钟内回到 Loon；
-6. 手动运行 `Bilibili CDN 测速并应用`；
-7. 等待通知显示兼容候选和排名；
-8. 回到 App，重新打开视频或再次拖到未缓存位置；
-9. 在 Loon 请求详情中确认新的大流量请求 Host 等于通知中的 `已选择`。
+6. 打开 `仪表 -> 所有节点`，长按任意一个节点；入口修复后，没有代理订阅时，自己建立的纯直连节点也只用来打开这个菜单；
+7. 在弹出的测速操作中点 `Bilibili CDN 测速并应用`；
+8. 等待通知显示兼容候选和排名；
+9. 回到 App，重新打开视频或再次拖到未缓存位置；
+10. 在 Loon 请求详情中确认新的大流量请求 Host 等于通知中的 `已选择`。
 
 如果通知说“暂无可测速样本”，常见原因是：
 
@@ -626,7 +627,7 @@ bash scripts/validate-auto.sh
 - 对内容一致性做字节摘要比较；
 - 官方 App 的缓冲、首帧和卡顿事件闭环。
 
-因此 0.1.0 应继续标为 Experimental。公开发布前至少应按设计文档“二十、测试方案”完成普通、PCDN、MCDN、Akamai、BStar、直播和不同网络的实机验证。
+因此 0.1.1 应继续标为 Experimental。公开发布前至少应按设计文档“二十、测试方案”完成普通、PCDN、MCDN、Akamai、BStar、直播和不同网络的实机验证。
 
 ## 十五、最重要的安全结论
 
