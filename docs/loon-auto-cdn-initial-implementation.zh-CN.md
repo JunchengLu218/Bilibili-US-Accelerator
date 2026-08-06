@@ -146,6 +146,8 @@
 
 0.1.5 根据 Loon 3.5.0(975) 实机诊断修复了 generic 与 http-request 参数不一致的问题。请求入口捕获分片时会同时保存一份经过 `parseSettings()` 规范化的非敏感设置快照；手动测速必须使用并校验这份快照，再以同一指纹保存结果。快照只包含候选 Host、测速大小/轮数/超时、缓存时间、策略开关和路由名称，不包含签名 URL、Cookie、Authorization 或请求正文。存储 schema 同时升级到 v3，旧版缓存不会被误用。
 
+0.1.6 修复了跨 profile 开关错误污染缓存指纹的问题。普通 `standard-upos` 只受候选池、Probe 大小、轮数和测速路由影响；开启 `RewriteAkamai` 不再让普通 UPOS 缓存失效。`BStarAsStandard`、`PCDNStrategy`、`MCDNStrategy` 和 `RewriteAkamai` 只进入各自 profile 的指纹。存储 schema 升级到 v4，避免旧指纹结果混入。
+
 ### 5. `[MITM]`
 
 位置：`Bilibili-US-Auto-Accelerator.plugin:43-45`

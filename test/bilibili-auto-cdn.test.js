@@ -287,13 +287,25 @@ test("a near-tie keeps the source host to avoid needless switching", function ()
   assert.strictEqual(core.chooseBest(ranking, "current").host, "current");
 });
 
-test("profile and strategy changes alter the cache fingerprint", function () {
-  var first = settings();
-  var second = settings({ BStarAsStandard: true });
-  assert.notStrictEqual(core.settingsFingerprint(first, "standard-upos"),
-    core.settingsFingerprint(first, "standard-bstar"));
-  assert.notStrictEqual(core.settingsFingerprint(first, "standard-upos"),
-    core.settingsFingerprint(second, "standard-upos"));
+test("cache fingerprint includes only switches relevant to its profile", function () {
+  var base = settings();
+  var akamaiEnabled = settings({ RewriteAkamai: true });
+  var bstarEnabled = settings({ BStarAsStandard: true });
+  var pcdnChanged = settings({ PCDNStrategy: "passthrough" });
+  var mcdnChanged = settings({ MCDNStrategy: "best-upos" });
+
+  assert.strictEqual(core.settingsFingerprint(base, "standard-upos"),
+    core.settingsFingerprint(akamaiEnabled, "standard-upos"));
+  assert.strictEqual(core.settingsFingerprint(base, "standard-upos"),
+    core.settingsFingerprint(bstarEnabled, "standard-upos"));
+  assert.notStrictEqual(core.settingsFingerprint(base, "akamai"),
+    core.settingsFingerprint(akamaiEnabled, "akamai"));
+  assert.notStrictEqual(core.settingsFingerprint(base, "standard-bstar"),
+    core.settingsFingerprint(bstarEnabled, "standard-bstar"));
+  assert.notStrictEqual(core.settingsFingerprint(base, "pcdn"),
+    core.settingsFingerprint(pcdnChanged, "pcdn"));
+  assert.notStrictEqual(core.settingsFingerprint(base, "mcdn"),
+    core.settingsFingerprint(mcdnChanged, "mcdn"));
 });
 
 test("capture persists only minimal headers and never cookies", function () {
@@ -399,6 +411,39 @@ test("cache inspection distinguishes missing keys and changed settings", functio
     1001
   );
   assert.strictEqual(differentSettings.status, "settings-mismatch");
+});
+
+test("enabling Akamai keeps an ordinary UPOS result valid", function () {
+  var store = memoryStore();
+  var before = settings({
+    Candidates: "upos-sz-mirroraliov.bilivideo.com",
+    ProbeBytes: "2097152",
+    Rounds: "3",
+    RewriteAkamai: false
+  });
+  var after = settings({
+    Candidates: "upos-sz-mirroraliov.bilivideo.com",
+    ProbeBytes: "2097152",
+    Rounds: "3",
+    RewriteAkamai: true
+  });
+  var best = { host: "upos-sz-mirroraliov.bilivideo.com", success: true, effectiveMbps: 41 };
+  var now = Date.now();
+  core.saveResult(store, "wifi:test", { profile: "standard-upos" }, before, [best], best, now);
+
+  assert.ok(core.readValidResult(store, "wifi:test", "standard-upos", after, now + 1));
+
+  var outputs = [];
+  core.handleRequest(
+    runtimeFor(store, function (value) { outputs.push(value); }, null, []),
+    request(
+      "http://upos-sz-mirrorcosov.bilivideo.com/upgcxcode/a.m4s?upsig=secret",
+      { Range: "bytes=0-" }
+    ),
+    after
+  );
+  assert.strictEqual(outputs[0].url,
+    "http://upos-sz-mirroraliov.bilivideo.com/upgcxcode/a.m4s?upsig=secret");
 });
 
 test("xy_usource accepts a safe Bilibili host and rejects arbitrary targets", function () {

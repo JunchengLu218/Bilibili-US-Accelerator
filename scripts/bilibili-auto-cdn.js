@@ -16,8 +16,8 @@
 (function () {
   "use strict";
 
-  var SCHEMA_VERSION = 3;
-  var STORE_PREFIX = "bili_auto_cdn:v3";
+  var SCHEMA_VERSION = 4;
+  var STORE_PREFIX = "bili_auto_cdn:v4";
   var LAST_RESULT_SUMMARY_KEY = STORE_PREFIX + ":last-result-summary";
   var PROBE_HEADER = "X-Bili-CDN-Probe";
   var CAPTURE_TTL_MS = 5 * 60 * 1000;
@@ -529,19 +529,24 @@
   }
 
   function settingsFingerprint(settings, profile) {
-    return hashText(JSON.stringify({
+    var relevant = {
       schemaVersion: SCHEMA_VERSION,
       profile: profile,
       candidates: settings.candidates,
       probeBytes: settings.probeBytes,
       rounds: settings.rounds,
-      route: settings.route,
-      bStarAsStandard: settings.bStarAsStandard,
-      pcdnStrategy: settings.pcdnStrategy,
-      mcdnStrategy: settings.mcdnStrategy,
-      rewriteAkamai: settings.rewriteAkamai,
-      liveStrategy: settings.liveStrategy
-    }));
+      route: settings.route
+    };
+
+    /* Feature switches belong only to the profile they control.  For example,
+     * enabling Akamai testing must not invalidate a successful ordinary-UPOS
+     * result collected on the same network with the same probe settings. */
+    if (profile === "standard-bstar") relevant.bStarAsStandard = settings.bStarAsStandard;
+    else if (profile === "pcdn") relevant.pcdnStrategy = settings.pcdnStrategy;
+    else if (profile === "mcdn") relevant.mcdnStrategy = settings.mcdnStrategy;
+    else if (profile === "akamai") relevant.rewriteAkamai = settings.rewriteAkamai;
+
+    return hashText(JSON.stringify(relevant));
   }
 
   function storeKey(kind, networkKey, profile) {

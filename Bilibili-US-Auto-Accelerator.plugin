@@ -7,7 +7,7 @@
 #!system_version = 15
 #!loon_version = 3.5.0(969)
 #!type = normal
-#!version = 0.1.5
+#!version = 0.1.6
 
 [Argument]
 # 初版只实现推荐的手动模式：先播放视频捕获样本，再从 Loon 手动运行测速脚本。
