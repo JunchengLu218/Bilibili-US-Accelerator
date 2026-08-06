@@ -26,6 +26,7 @@ grep -Fq 'status !== 206' "$script"
 grep -Fq 'Content-Range' "$script"
 grep -Fq 'network:unknown' "$script"
 grep -Fq 'htmlMessage' "$script"
+grep -Fq 'Cache lookup status=' "$script"
 
 # The stable plugin remains independent; the experimental plugin must not use
 # old header Rewrite rules or redirect Akamai without the script-side switch.

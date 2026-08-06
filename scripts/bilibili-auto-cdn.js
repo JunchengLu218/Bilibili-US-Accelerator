@@ -18,6 +18,7 @@
 
   var SCHEMA_VERSION = 2;
   var STORE_PREFIX = "bili_auto_cdn:v2";
+  var LAST_RESULT_SUMMARY_KEY = STORE_PREFIX + ":last-result-summary";
   var PROBE_HEADER = "X-Bili-CDN-Probe";
   var CAPTURE_TTL_MS = 5 * 60 * 1000;
   var UNKNOWN_NETWORK_CACHE_MAX_MS = 15 * 60 * 1000;
@@ -533,15 +534,67 @@
     }
   }
 
+  /*
+   * Return a reason as well as the cached value.  A plain null is safe for
+   * normal operation, but it cannot tell a tester whether the current script
+   * saw a different Wi-Fi name, different plugin arguments, an expired entry,
+   * or no shared storage entry at all.
+   */
+  function inspectResult(storage, networkKey, profile, settings, now) {
+    var key = storeKey("result", networkKey, profile);
+    var currentFingerprint = settingsFingerprint(settings, profile);
+    var result = readJson(storage, key);
+    var status = "valid";
+
+    if (!result) status = "missing";
+    else if (result.schemaVersion !== SCHEMA_VERSION) status = "schema-mismatch";
+    else if (result.networkKey !== networkKey) status = "network-mismatch";
+    else if (result.profile !== profile) status = "profile-mismatch";
+    else if (result.settingsFingerprint !== currentFingerprint) status = "settings-mismatch";
+    else if (!result.expiresAt || result.expiresAt <= now) status = "expired";
+    else if (!validateCandidateHost(result.bestHost)) status = "invalid-best-host";
+    else if (settings.candidates.indexOf(result.bestHost) === -1) status = "best-host-not-in-candidates";
+
+    return {
+      status: status,
+      key: key,
+      networkKey: networkKey,
+      profile: profile,
+      currentFingerprint: currentFingerprint,
+      storedFingerprint: result && result.settingsFingerprint ? result.settingsFingerprint : "none",
+      result: status === "valid" ? result : null,
+      lastSummary: readJson(storage, LAST_RESULT_SUMMARY_KEY)
+    };
+  }
+
   function readValidResult(storage, networkKey, profile, settings, now) {
-    var result = readJson(storage, storeKey("result", networkKey, profile));
-    if (!result) return null;
-    if (result.schemaVersion !== SCHEMA_VERSION) return null;
-    if (result.networkKey !== networkKey || result.profile !== profile) return null;
-    if (result.settingsFingerprint !== settingsFingerprint(settings, profile)) return null;
-    if (!result.expiresAt || result.expiresAt <= now) return null;
-    if (!validateCandidateHost(result.bestHost) || settings.candidates.indexOf(result.bestHost) === -1) return null;
-    return result;
+    return inspectResult(storage, networkKey, profile, settings, now).result;
+  }
+
+  function shortFingerprint(value) {
+    var text = trim(value);
+    return text ? text.slice(0, 8) : "none";
+  }
+
+  function cacheInspectionLog(inspection) {
+    var parts = [
+      "Cache lookup status=" + inspection.status,
+      "network=" + inspection.networkKey,
+      "profile=" + inspection.profile,
+      "current-fp=" + shortFingerprint(inspection.currentFingerprint),
+      "stored-fp=" + shortFingerprint(inspection.storedFingerprint)
+    ];
+    var last = inspection.lastSummary;
+    if (last) {
+      parts.push(
+        "last=" + String(last.networkKey || "unknown") + "/" +
+        String(last.profile || "unknown") + "/" +
+        shortFingerprint(last.settingsFingerprint)
+      );
+    } else {
+      parts.push("last=none");
+    }
+    return parts.join(" ");
   }
 
   function saveCapture(storage, networkKey, profile, trafficClass, request, benchmarkUrl, settings, now) {
@@ -632,7 +685,21 @@
       expiresAt: now + cacheMs
     };
 
-    return writeJson(storage, storeKey("result", networkKey, capture.profile), result);
+    var saved = writeJson(storage, storeKey("result", networkKey, capture.profile), result);
+    if (saved) {
+      /* This compact record lets another entry explain a missing current-key
+       * result without storing the signed video URL or request headers. */
+      writeJson(storage, LAST_RESULT_SUMMARY_KEY, {
+        schemaVersion: SCHEMA_VERSION,
+        networkKey: networkKey,
+        profile: capture.profile,
+        bestHost: best.host,
+        settingsFingerprint: result.settingsFingerprint,
+        testedAt: result.testedAt,
+        expiresAt: result.expiresAt
+      });
+    }
+    return saved;
   }
 
   /* -----------------------------------------------------------------------
@@ -920,7 +987,9 @@
     }
 
     var now = Date.now();
-    var result = readValidResult(runtime.storage, runtime.network.key, profile, settings, now);
+    var inspection = inspectResult(runtime.storage, runtime.network.key, profile, settings, now);
+    logger.info(cacheInspectionLog(inspection));
+    var result = inspection.result;
     if (result) {
       var rewrite = rewriteToHost(request, result.bestHost, dropPort);
       if (rewrite) {
@@ -1104,8 +1173,27 @@
         return;
       }
 
+      var savedInspection = inspectResult(
+        runtime.storage,
+        runtime.network.key,
+        capture.profile,
+        settings,
+        finishedAt
+      );
+      if (savedInspection.status !== "valid") {
+        finishManual(
+          runtime,
+          "Bilibili CDN 结果回读失败",
+          runtime.network.label + " / " + capture.profile,
+          "缓存写入后无法通过当前设置读取，状态: " + savedInspection.status + "。原始播放路线未被修改。"
+        );
+        return;
+      }
+
       expireCapture(runtime.storage, runtime.network.key, capture.profile);
       var notice = rankingNotification(runtime.network, capture, ranking, best, settings.cacheMinutes);
+      notice.content += "\n缓存网络: " + runtime.network.key;
+      notice.content += "\n设置指纹: " + shortFingerprint(savedInspection.currentFingerprint);
       finishManual(runtime, "Bilibili CDN 测速完成", notice.subtitle, notice.content);
     });
   }
@@ -1135,6 +1223,7 @@
     chooseBest: chooseBest,
     settingsFingerprint: settingsFingerprint,
     storeKey: storeKey,
+    inspectResult: inspectResult,
     readValidResult: readValidResult,
     saveCapture: saveCapture,
     findLatestCapture: findLatestCapture,

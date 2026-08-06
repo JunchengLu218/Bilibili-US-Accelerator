@@ -372,6 +372,31 @@ test("a result is invalid across profiles or changed settings", function () {
     settings({ Route: "DIRECT" }), 1001), null);
 });
 
+test("cache inspection distinguishes missing keys and changed settings", function () {
+  var store = memoryStore();
+  var current = settings({ Candidates: "upos-tf-all-hw.bilivideo.com" });
+  var best = { host: "upos-tf-all-hw.bilivideo.com", success: true, effectiveMbps: 8 };
+  core.saveResult(store, "wifi:@2P", { profile: "standard-upos" }, current, [best], best, 1000);
+
+  var valid = core.inspectResult(store, "wifi:@2P", "standard-upos", current, 1001);
+  assert.strictEqual(valid.status, "valid");
+  assert.strictEqual(valid.result.bestHost, best.host);
+
+  var differentNetwork = core.inspectResult(store, "network:unknown", "standard-upos", current, 1001);
+  assert.strictEqual(differentNetwork.status, "missing");
+  assert.strictEqual(differentNetwork.lastSummary.networkKey, "wifi:@2P");
+  assert.strictEqual(differentNetwork.lastSummary.profile, "standard-upos");
+
+  var differentSettings = core.inspectResult(
+    store,
+    "wifi:@2P",
+    "standard-upos",
+    settings({ Route: "DIRECT" }),
+    1001
+  );
+  assert.strictEqual(differentSettings.status, "settings-mismatch");
+});
+
 test("xy_usource accepts a safe Bilibili host and rejects arbitrary targets", function () {
   var safe = "http://edge.szbdyd.com:4480/upgcxcode/a.m4s?xy_usource=" +
     encodeURIComponent("upos-tf-all-tx.bilivideo.com");
