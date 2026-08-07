@@ -112,6 +112,19 @@ test("falls back to the built-in pool if every candidate is invalid", function (
     core.constants.DEFAULT_CANDIDATES);
 });
 
+test("manual test branch uses the expected eight-candidate pool", function () {
+  assert.deepStrictEqual(core.constants.DEFAULT_CANDIDATES, [
+    "upos-sz-mirrorcosov.bilivideo.com",
+    "upos-sz-mirroraliov.bilivideo.com",
+    "upos-sz-mirrorhwov.bilivideo.com",
+    "upos-sz-mirrorali.bilivideo.com",
+    "upos-tf-all-hw.bilivideo.com",
+    "upos-sz-mirrorhw.bilivideo.com",
+    "upos-sz-mirrorcos.bilivideo.com",
+    "upos-tf-all-tx.bilivideo.com"
+  ]);
+});
+
 test("raw URL parsing leaves the signed tail untouched", function () {
   var url = "https://UPOS-SZ-MIRRORALI.BILIVIDEO.COM:443/upgcxcode/a.m4s?upsig=a%2Bb&x=1+2";
   var parsed = core.parseRawUrl(url);
@@ -134,7 +147,7 @@ test("PCDN canonicalization removes a non-standard source port", function () {
   );
   assert.strictEqual(canonical.url.indexOf(":4480"), -1);
   assert.strictEqual(canonical.url,
-    "http://upos-sz-mirroraliov.bilivideo.com/upgcxcode/a.m4s?token=a%2Bb");
+    "http://" + core.constants.DEFAULT_CANDIDATES[0] + "/upgcxcode/a.m4s?token=a%2Bb");
 });
 
 test("classification gives live the highest media priority", function () {

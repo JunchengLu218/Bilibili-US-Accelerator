@@ -25,10 +25,14 @@
   var MCDN_PROXY_HOST = "proxy-tf-all-ws.bilivideo.com";
 
   var DEFAULT_CANDIDATES = [
+    "upos-sz-mirrorcosov.bilivideo.com",
     "upos-sz-mirroraliov.bilivideo.com",
+    "upos-sz-mirrorhwov.bilivideo.com",
+    "upos-sz-mirrorali.bilivideo.com",
     "upos-tf-all-hw.bilivideo.com",
-    "upos-tf-all-tx.bilivideo.com",
-    "upos-sz-mirrorali.bilivideo.com"
+    "upos-sz-mirrorhw.bilivideo.com",
+    "upos-sz-mirrorcos.bilivideo.com",
+    "upos-tf-all-tx.bilivideo.com"
   ];
 
   var PROFILES = [

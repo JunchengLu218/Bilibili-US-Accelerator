@@ -52,7 +52,7 @@ test_icon_url="https://raw.githubusercontent.com/${repo_slug}/${git_ref}/assets/
 sed \
   -e "s#https://raw.githubusercontent.com/[^/]*/[^/]*/main/scripts/bilibili-auto-cdn\.js#${test_script_url}#g" \
   -e "s#https://raw.githubusercontent.com/[^/]*/[^/]*/main/assets/bilibili-blue\.png#${test_icon_url}#g" \
-  -e "s/^#!name = Bilibili US Auto Accelerator (Experimental)$/#!name = Bilibili US Auto Accelerator (Test)/" \
+  -e "s/^#!name = Bilibili US Auto Accelerator (Experimental)$/#!name = Bilibili US Auto Accelerator (Manual 8 Test)/" \
   "$source_plugin" > "$output_plugin"
 
 expected_urls=6
