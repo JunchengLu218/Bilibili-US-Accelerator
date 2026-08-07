@@ -1,18 +1,18 @@
-#!name = Bilibili US Auto Accelerator (Test)
-#!desc = 捕获 Bilibili 真实分片并手动串行测速；仅把后续请求改到已验证兼容的最快普通 UPOS 候选。
+#!name = Bilibili US Auto Accelerator (Auto + Manual 4 Test)
+#!desc = 使用 4 个普通 UPOS 候选进行手动或首次请求自动测速；失败时始终保留原始播放路线。
 #!author = JunchengLu & Codex
 #!homepage = https://github.com/JunchengLu218/Bilibili-US-Accelerator
-#!icon = https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/codex/0.1.4-test/assets/bilibili-blue.png?test=20260807043114
-#!tag = Bilibili,CDN,accelerator,experimental
+#!icon = https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/test-auto-manual-4/assets/bilibili-blue.png?test=20260807043911
+#!tag = Bilibili,CDN,accelerator,automatic,experimental
 #!system = iOS,iPadOS
 #!system_version = 15
 #!loon_version = 3.5.0(969)
 #!type = normal
-#!version = 0.1.6
+#!version = 0.2.0
 
 [Argument]
-# 初版只实现推荐的手动模式：先播放视频捕获样本，再从 Loon 手动运行测速脚本。
-Mode = select,"manual",tag=测速模式,desc=初版仅提供手动模式，不会阻塞第一次播放
+# 手动模式最稳妥；first-request 会让无缓存时的第一条合格请求等待串行测速。
+Mode = select,"manual","first-request",tag=测速模式,desc=manual 先捕获再手动运行；first-request 自动测速并改写同一条请求
 Candidates = input,"upos-sz-mirroraliov.bilivideo.com,upos-tf-all-hw.bilivideo.com,upos-tf-all-tx.bilivideo.com,upos-sz-mirrorali.bilivideo.com",tag=候选 CDN,desc=仅接受普通 bilivideo.com UPOS/HK 主机；非法值会被忽略
 BStarAsStandard = switch,false,tag=将 BStar 作为普通 UPOS,desc=开启后使用同一候选池，但单独测速并写入独立缓存
 PCDNStrategy = select,"best-upos","xy-usource","passthrough",tag=PCDN 策略,desc=best-upos 会先捕获并测速；xy-usource 只接受合法 Bilibili 来源主机
@@ -32,14 +32,14 @@ force-http-engine-hosts = *:4480, *:4483, *:8000, *:8082, *:9102
 
 [Script]
 # 所有入口使用同一个脚本。入口正则负责收窄范围，脚本内部仍会按固定优先级重新分类。
-http-request ^http:\/\/[^/]+:4480\/upgcxcode\/ script-path=https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/codex/0.1.4-test/scripts/bilibili-auto-cdn.js?test=20260807043114,tag=Bilibili PCDN 分类与捕获,timeout=20,argument=[{Mode},{Candidates},{BStarAsStandard},{PCDNStrategy},{MCDNStrategy},{RewriteAkamai},{LiveStrategy},{ProbeBytes},{TimeoutMs},{Rounds},{CacheMinutes},{Route},{LogLevel}]
-http-request ^https?:\/\/[^/]+\.mcdn\.bilivideo\.(?:cn|com|net)(?::[0-9]{1,5})?\/(?:v1\/resource|upgcxcode)\/ script-path=https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/codex/0.1.4-test/scripts/bilibili-auto-cdn.js?test=20260807043114,tag=Bilibili MCDN 分类与处理,timeout=20,argument=[{Mode},{Candidates},{BStarAsStandard},{PCDNStrategy},{MCDNStrategy},{RewriteAkamai},{LiveStrategy},{ProbeBytes},{TimeoutMs},{Rounds},{CacheMinutes},{Route},{LogLevel}]
-http-request ^https?:\/\/upos-(?:hz|bstar1)-mirrorakam\.akamaized\.net(?::(?:80|443))?\/upgcxcode\/ script-path=https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/codex/0.1.4-test/scripts/bilibili-auto-cdn.js?test=20260807043114,tag=Bilibili Akamai 分类与捕获,timeout=20,argument=[{Mode},{Candidates},{BStarAsStandard},{PCDNStrategy},{MCDNStrategy},{RewriteAkamai},{LiveStrategy},{ProbeBytes},{TimeoutMs},{Rounds},{CacheMinutes},{Route},{LogLevel}]
-http-request ^https?:\/\/[^/]+\.bilivideo\.com(?::[0-9]{1,5})?\/live-bvc\/ script-path=https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/codex/0.1.4-test/scripts/bilibili-auto-cdn.js?test=20260807043114,tag=Bilibili 直播安全放行,timeout=10,argument=[{Mode},{Candidates},{BStarAsStandard},{PCDNStrategy},{MCDNStrategy},{RewriteAkamai},{LiveStrategy},{ProbeBytes},{TimeoutMs},{Rounds},{CacheMinutes},{Route},{LogLevel}]
-http-request ^https?:\/\/(?:upos-[a-z0-9-]+|cn-hk-eq-[a-z0-9-]+)\.bilivideo\.com(?::[0-9]{1,5})?\/upgcxcode\/ script-path=https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/codex/0.1.4-test/scripts/bilibili-auto-cdn.js?test=20260807043114,tag=Bilibili UPOS 分类与改写,timeout=20,argument=[{Mode},{Candidates},{BStarAsStandard},{PCDNStrategy},{MCDNStrategy},{RewriteAkamai},{LiveStrategy},{ProbeBytes},{TimeoutMs},{Rounds},{CacheMinutes},{Route},{LogLevel}]
+http-request ^http:\/\/[^/]+:4480\/upgcxcode\/ script-path=https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/test-auto-manual-4/scripts/bilibili-auto-cdn.js?test=20260807043911,tag=Bilibili PCDN 分类与捕获,timeout=90,argument=[{Mode},{Candidates},{BStarAsStandard},{PCDNStrategy},{MCDNStrategy},{RewriteAkamai},{LiveStrategy},{ProbeBytes},{TimeoutMs},{Rounds},{CacheMinutes},{Route},{LogLevel}]
+http-request ^https?:\/\/[^/]+\.mcdn\.bilivideo\.(?:cn|com|net)(?::[0-9]{1,5})?\/(?:v1\/resource|upgcxcode)\/ script-path=https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/test-auto-manual-4/scripts/bilibili-auto-cdn.js?test=20260807043911,tag=Bilibili MCDN 分类与处理,timeout=90,argument=[{Mode},{Candidates},{BStarAsStandard},{PCDNStrategy},{MCDNStrategy},{RewriteAkamai},{LiveStrategy},{ProbeBytes},{TimeoutMs},{Rounds},{CacheMinutes},{Route},{LogLevel}]
+http-request ^https?:\/\/upos-(?:hz|bstar1)-mirrorakam\.akamaized\.net(?::(?:80|443))?\/upgcxcode\/ script-path=https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/test-auto-manual-4/scripts/bilibili-auto-cdn.js?test=20260807043911,tag=Bilibili Akamai 分类与捕获,timeout=90,argument=[{Mode},{Candidates},{BStarAsStandard},{PCDNStrategy},{MCDNStrategy},{RewriteAkamai},{LiveStrategy},{ProbeBytes},{TimeoutMs},{Rounds},{CacheMinutes},{Route},{LogLevel}]
+http-request ^https?:\/\/[^/]+\.bilivideo\.com(?::[0-9]{1,5})?\/live-bvc\/ script-path=https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/test-auto-manual-4/scripts/bilibili-auto-cdn.js?test=20260807043911,tag=Bilibili 直播安全放行,timeout=10,argument=[{Mode},{Candidates},{BStarAsStandard},{PCDNStrategy},{MCDNStrategy},{RewriteAkamai},{LiveStrategy},{ProbeBytes},{TimeoutMs},{Rounds},{CacheMinutes},{Route},{LogLevel}]
+http-request ^https?:\/\/(?:upos-[a-z0-9-]+|cn-hk-eq-[a-z0-9-]+)\.bilivideo\.com(?::[0-9]{1,5})?\/upgcxcode\/ script-path=https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/test-auto-manual-4/scripts/bilibili-auto-cdn.js?test=20260807043911,tag=Bilibili UPOS 分类与改写,timeout=90,argument=[{Mode},{Candidates},{BStarAsStandard},{PCDNStrategy},{MCDNStrategy},{RewriteAkamai},{LiveStrategy},{ProbeBytes},{TimeoutMs},{Rounds},{CacheMinutes},{Route},{LogLevel}]
 
 # 播放视频捕获样本后，在“仪表 -> 所有节点”中长按任一节点，再点此测速操作。
-generic script-path=https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/codex/0.1.4-test/scripts/bilibili-auto-cdn.js?test=20260807043114,tag=Bilibili CDN 测速并应用,timeout=120,img-url=atom.system,enable=true,argument=[{Mode},{Candidates},{BStarAsStandard},{PCDNStrategy},{MCDNStrategy},{RewriteAkamai},{LiveStrategy},{ProbeBytes},{TimeoutMs},{Rounds},{CacheMinutes},{Route},{LogLevel}]
+generic script-path=https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/test-auto-manual-4/scripts/bilibili-auto-cdn.js?test=20260807043911,tag=Bilibili CDN 测速并应用,timeout=120,img-url=atom.system,enable=true,argument=[{Mode},{Candidates},{BStarAsStandard},{PCDNStrategy},{MCDNStrategy},{RewriteAkamai},{LiveStrategy},{ProbeBytes},{TimeoutMs},{Rounds},{CacheMinutes},{Route},{LogLevel}]
 
 [MITM]
 # 只列出本初版明确处理的 Bilibili 视频主机族，不使用覆盖整个 bilivideo.com 的宽泛规则。

@@ -7,8 +7,8 @@
  *
  * The script has two entry modes:
  *   1. http-request: classify a media request, reuse a valid result, or save a
- *      short-lived sample URL for later. It never benchmarks in the first
- *      version, so the first playback request is not held up.
+ *      short-lived sample URL. Manual mode releases the first request at once;
+ *      optional first-request mode benchmarks before releasing that request.
  *   2. generic: benchmark the newest saved sample serially, cache the ranking,
  *      notify the user, and finish. A later App request uses the cached host.
  */
@@ -21,6 +21,7 @@
   var LAST_RESULT_SUMMARY_KEY = STORE_PREFIX + ":last-result-summary";
   var PROBE_HEADER = "X-Bili-CDN-Probe";
   var CAPTURE_TTL_MS = 5 * 60 * 1000;
+  var AUTO_FAILURE_COOLDOWN_MS = 5 * 60 * 1000;
   var UNKNOWN_NETWORK_CACHE_MAX_MS = 15 * 60 * 1000;
   var MCDN_PROXY_HOST = "proxy-tf-all-ws.bilivideo.com";
 
@@ -134,7 +135,7 @@
     if (route.length > 128 || /[\r\n\0]/.test(route)) route = "follow-rule";
 
     return {
-      mode: "manual",
+      mode: enumValue(getArgument(raw, "Mode"), ["manual", "first-request"], "manual"),
       candidates: candidateResult.valid,
       rejectedCandidates: candidateResult.rejected,
       bStarAsStandard: toBoolean(getArgument(raw, "BStarAsStandard"), false),
@@ -167,7 +168,7 @@
    */
   function snapshotSettings(settings) {
     return {
-      Mode: "manual",
+      Mode: settings.mode,
       Candidates: settings.candidates.join(","),
       BStarAsStandard: settings.bStarAsStandard,
       PCDNStrategy: settings.pcdnStrategy,
@@ -607,6 +608,33 @@
     return inspectResult(storage, networkKey, profile, settings, now).result;
   }
 
+  function automaticCooldownActive(storage, networkKey, profile, settings, now) {
+    var cooldown = readJson(storage, storeKey("auto-cooldown", networkKey, profile));
+    return Boolean(
+      cooldown &&
+      cooldown.schemaVersion === SCHEMA_VERSION &&
+      cooldown.settingsFingerprint === settingsFingerprint(settings, profile) &&
+      cooldown.expiresAt > now
+    );
+  }
+
+  function saveAutomaticCooldown(storage, networkKey, profile, settings, now, reason) {
+    return writeJson(storage, storeKey("auto-cooldown", networkKey, profile), {
+      schemaVersion: SCHEMA_VERSION,
+      settingsFingerprint: settingsFingerprint(settings, profile),
+      reason: String(reason || "benchmark-failed").slice(0, 80),
+      expiresAt: now + AUTO_FAILURE_COOLDOWN_MS
+    });
+  }
+
+  function clearAutomaticCooldown(storage, networkKey, profile, settings) {
+    return writeJson(storage, storeKey("auto-cooldown", networkKey, profile), {
+      schemaVersion: SCHEMA_VERSION,
+      settingsFingerprint: settingsFingerprint(settings, profile),
+      expiresAt: 0
+    });
+  }
+
   function shortFingerprint(value) {
     var text = trim(value);
     return text ? text.slice(0, 8) : "none";
@@ -1006,6 +1034,126 @@
     };
   }
 
+  /*
+   * Optional first-request mode.
+   *
+   * Unlike the manual generic action, this function deliberately keeps the
+   * current media request open until the serial probes finish.  Every failure
+   * path calls done({}) so Loon releases the untouched original request.  If
+   * another audio/video request arrives while the lock is held, that request
+   * also passes through immediately instead of waiting behind the benchmark.
+   */
+  function runFirstRequestBenchmark(runtime, request, capture, settings, dropPort) {
+    if (!runtime.httpClient || typeof runtime.httpClient.get !== "function") {
+      runtime.logger.warn("Automatic benchmark unavailable: no $httpClient.get API");
+      saveAutomaticCooldown(
+        runtime.storage,
+        runtime.network.key,
+        capture.profile,
+        settings,
+        Date.now(),
+        "missing-http-client"
+      );
+      runtime.done({});
+      return;
+    }
+
+    var owner = acquireLock(
+      runtime.storage,
+      runtime.network.key,
+      capture.profile,
+      settings,
+      Date.now()
+    );
+    if (!owner) {
+      runtime.logger.info("Automatic benchmark already running; pass this request through");
+      runtime.done({});
+      return;
+    }
+
+    runtime.logger.info("Start first-request benchmark for " + capture.profile);
+    benchmarkSerially(capture, settings, runtime.httpClient, runtime.logger, function (error, ranking) {
+      var finishedAt = Date.now();
+      releaseLock(runtime.storage, runtime.network.key, capture.profile, owner);
+
+      if (error) {
+        runtime.logger.warn("Automatic benchmark stopped: " + safeErrorText(error));
+        saveAutomaticCooldown(
+          runtime.storage,
+          runtime.network.key,
+          capture.profile,
+          settings,
+          finishedAt,
+          "benchmark-error"
+        );
+        runtime.done({});
+        return;
+      }
+
+      var best = chooseBest(ranking, capture.sourceHost);
+      if (!best) {
+        runtime.logger.warn("Automatic benchmark failed for every candidate; keep original host");
+        saveAutomaticCooldown(
+          runtime.storage,
+          runtime.network.key,
+          capture.profile,
+          settings,
+          finishedAt,
+          "all-candidates-failed"
+        );
+        runtime.done({});
+        return;
+      }
+
+      if (!saveResult(
+        runtime.storage,
+        runtime.network.key,
+        capture,
+        settings,
+        ranking,
+        best,
+        finishedAt
+      )) {
+        runtime.logger.warn("Automatic benchmark result could not be saved; keep original host");
+        saveAutomaticCooldown(
+          runtime.storage,
+          runtime.network.key,
+          capture.profile,
+          settings,
+          finishedAt,
+          "result-save-failed"
+        );
+        runtime.done({});
+        return;
+      }
+
+      var rewrite = rewriteToHost(request, best.host, dropPort);
+      if (!rewrite) {
+        runtime.logger.warn("Automatic benchmark succeeded but request rewrite was unsafe");
+        runtime.done({});
+        return;
+      }
+
+      expireCapture(runtime.storage, runtime.network.key, capture.profile);
+      clearAutomaticCooldown(runtime.storage, runtime.network.key, capture.profile, settings);
+      var notice = rankingNotification(
+        runtime.network,
+        capture,
+        ranking,
+        best,
+        settings.cacheMinutes
+      );
+      notify(
+        runtime.notification,
+        "Bilibili CDN 自动测速完成",
+        notice.subtitle,
+        notice.content
+      );
+      runtime.logger.info("Apply newly benchmarked host " + best.host + " for " + capture.profile);
+      runtime.done(rewrite);
+    });
+  }
+
   /* -----------------------------------------------------------------------
    * Request entry
    * -------------------------------------------------------------------- */
@@ -1044,7 +1192,7 @@
       return;
     }
 
-    saveCapture(
+    var saved = saveCapture(
       runtime.storage,
       runtime.network.key,
       profile,
@@ -1054,8 +1202,40 @@
       settings,
       now
     );
+    if (!saved) {
+      logger.warn("Capture could not be saved; keep original host");
+      runtime.done({});
+      return;
+    }
     logger.info("Captured " + trafficClass + " sample from host " + parseRawUrl(request.url).hostname);
-    runtime.done({});
+
+    if (settings.mode !== "first-request") {
+      runtime.done({});
+      return;
+    }
+
+    if (automaticCooldownActive(
+      runtime.storage,
+      runtime.network.key,
+      profile,
+      settings,
+      now
+    )) {
+      logger.info("Automatic benchmark is in failure cooldown; pass this request through");
+      runtime.done({});
+      return;
+    }
+
+    var capture = readJson(
+      runtime.storage,
+      storeKey("capture", runtime.network.key, profile)
+    );
+    if (!capture || capture.settingsFingerprint !== settingsFingerprint(settings, profile)) {
+      logger.warn("Automatic benchmark capture could not be read back safely");
+      runtime.done({});
+      return;
+    }
+    runFirstRequestBenchmark(runtime, request, capture, settings, dropPort);
   }
 
   function handleRequest(runtime, request, settings) {
@@ -1296,6 +1476,7 @@
     profileAllowed: profileAllowed,
     getNetworkInfo: getNetworkInfo,
     benchmarkSerially: benchmarkSerially,
+    runFirstRequestBenchmark: runFirstRequestBenchmark,
     handleRequest: handleRequest,
     runManualBenchmark: runManualBenchmark
   };

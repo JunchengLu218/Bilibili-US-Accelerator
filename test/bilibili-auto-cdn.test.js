@@ -44,6 +44,7 @@ function memoryStore() {
 
 function settings(overrides) {
   var raw = {
+    Mode: "manual",
     Candidates: core.constants.DEFAULT_CANDIDATES.join(","),
     BStarAsStandard: false,
     PCDNStrategy: "best-upos",
@@ -110,6 +111,22 @@ test("filters invalid and duplicate candidate arguments", function () {
 test("falls back to the built-in pool if every candidate is invalid", function () {
   assert.deepStrictEqual(core.parseSettings({ Candidates: "evil.example,127.0.0.1" }).candidates,
     core.constants.DEFAULT_CANDIDATES);
+});
+
+test("accepts manual and first-request modes with a safe manual fallback", function () {
+  assert.strictEqual(core.parseSettings({ Mode: "manual" }).mode, "manual");
+  assert.strictEqual(core.parseSettings({ Mode: "first-request" }).mode, "first-request");
+  assert.strictEqual(core.parseSettings({ Mode: "unexpected" }).mode, "manual");
+  assert.strictEqual(core.snapshotSettings(settings({ Mode: "first-request" })).Mode, "first-request");
+});
+
+test("auto-manual test branch keeps the expected four-candidate pool", function () {
+  assert.deepStrictEqual(core.constants.DEFAULT_CANDIDATES, [
+    "upos-sz-mirroraliov.bilivideo.com",
+    "upos-tf-all-hw.bilivideo.com",
+    "upos-tf-all-tx.bilivideo.com",
+    "upos-sz-mirrorali.bilivideo.com"
+  ]);
 });
 
 test("raw URL parsing leaves the signed tail untouched", function () {
@@ -653,6 +670,105 @@ test("end-to-end manual flow captures, benchmarks, caches, and rewrites the next
   assert.strictEqual(rewriteDone[0].headers.Host, "upos-tf-all-hw.bilivideo.com");
   assert.strictEqual(rewriteDone[0].headers.Range, "bytes=4096-");
   assert.strictEqual(rewriteDone[0].headers.Cookie, "must-not-be-saved");
+});
+
+test("first-request mode benchmarks and rewrites the same request", function () {
+  var store = memoryStore();
+  var current = settings({
+    Mode: "first-request",
+    Candidates: "upos-tf-all-hw.bilivideo.com,upos-tf-all-tx.bilivideo.com",
+    ProbeBytes: "524288",
+    Rounds: "1"
+  });
+  var source = request(
+    "https://upos-sz-mirrorcosov.bilivideo.com/upgcxcode/a.m4s?upsig=auto-secret",
+    { Range: "bytes=0-", Cookie: "keep-on-real-request" }
+  );
+  var calls = [];
+  var outputs = [];
+  var notifications = [];
+  var httpClient = {
+    get: function (params, callback) {
+      calls.push(params);
+      callback(null, {
+        status: 206,
+        headers: {
+          "Content-Range": "bytes 0-524287/9999999",
+          "Content-Type": "video/mp4"
+        }
+      }, binary(524288));
+    }
+  };
+
+  core.handleRequest(
+    runtimeFor(store, function (value) { outputs.push(value); }, httpClient, notifications),
+    source,
+    current
+  );
+
+  assert.strictEqual(calls.length, 2);
+  assert.strictEqual(outputs.length, 1);
+  assert.strictEqual(outputs[0].url,
+    "https://upos-tf-all-hw.bilivideo.com/upgcxcode/a.m4s?upsig=auto-secret");
+  assert.strictEqual(outputs[0].headers.Cookie, "keep-on-real-request");
+  assert.ok(core.readValidResult(store, "wifi:test", "standard-upos", current, Date.now()));
+  assert.strictEqual(core.findLatestCapture(store, "wifi:test", Date.now()), null);
+  assert.strictEqual(notifications[0].title, "Bilibili CDN 自动测速完成");
+});
+
+test("first-request mode fails open when every candidate is incompatible", function () {
+  var store = memoryStore();
+  var current = settings({
+    Mode: "first-request",
+    Candidates: "upos-tf-all-hw.bilivideo.com"
+  });
+  var source = request(
+    "https://upos-sz-mirrorcosov.bilivideo.com/upgcxcode/a.m4s?upsig=auto-secret",
+    { Range: "bytes=0-" }
+  );
+  var outputs = [];
+  var probeCalls = 0;
+  var failingHttpClient = {
+    get: function (_params, callback) {
+      probeCalls += 1;
+      callback(null, { status: 403, headers: { "Content-Type": "text/html" } }, binary(10));
+    }
+  };
+
+  core.handleRequest(
+    runtimeFor(store, function (value) { outputs.push(value); }, failingHttpClient, []),
+    source,
+    current
+  );
+  core.handleRequest(
+    runtimeFor(store, function (value) { outputs.push(value); }, failingHttpClient, []),
+    source,
+    current
+  );
+
+  assert.deepStrictEqual(outputs, [{}, {}]);
+  assert.strictEqual(probeCalls, 1);
+  assert.strictEqual(core.readValidResult(store, "wifi:test", "standard-upos", current, Date.now()), null);
+  assert.ok(core.findLatestCapture(store, "wifi:test", Date.now()));
+});
+
+test("a concurrent first-request benchmark passes through without starting more probes", function () {
+  var store = memoryStore();
+  var current = settings({ Mode: "first-request" });
+  var owner = core.acquireLock(store, "wifi:test", "standard-upos", current, Date.now());
+  var outputs = [];
+  var probeCalls = 0;
+
+  core.handleRequest(runtimeFor(store, function (value) { outputs.push(value); }, {
+    get: function () { probeCalls += 1; }
+  }, []), request(
+    "https://upos-sz-mirrorcosov.bilivideo.com/upgcxcode/a.m4s?upsig=auto-secret",
+    { Range: "bytes=0-" }
+  ), current);
+
+  assert.ok(owner);
+  assert.deepStrictEqual(outputs, [{}]);
+  assert.strictEqual(probeCalls, 0);
 });
 
 test("end-to-end all-candidate failure saves no best host and preserves playback", function () {
