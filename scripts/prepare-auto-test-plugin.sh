@@ -47,9 +47,11 @@ test -f "$source_plugin"
 # which reduces the chance of an older remote script remaining in its cache.
 cache_buster="$(date -u +%Y%m%d%H%M%S)"
 test_script_url="https://raw.githubusercontent.com/${repo_slug}/${git_ref}/scripts/bilibili-auto-cdn.js?test=${cache_buster}"
+test_icon_url="https://raw.githubusercontent.com/${repo_slug}/${git_ref}/assets/bilibili-blue.png?test=${cache_buster}"
 
 sed \
   -e "s#https://raw.githubusercontent.com/[^/]*/[^/]*/main/scripts/bilibili-auto-cdn\.js#${test_script_url}#g" \
+  -e "s#https://raw.githubusercontent.com/[^/]*/[^/]*/main/assets/bilibili-blue\.png#${test_icon_url}#g" \
   -e "s/^#!name = Bilibili US Auto Accelerator (Experimental)$/#!name = Bilibili US Auto Accelerator (Test)/" \
   "$source_plugin" > "$output_plugin"
 
@@ -62,6 +64,16 @@ fi
 
 if grep -Fq '/main/scripts/bilibili-auto-cdn.js' "$output_plugin"; then
   echo "generated plugin still contains a main-branch script URL" >&2
+  exit 1
+fi
+
+if ! grep -Fq "/${git_ref}/assets/bilibili-blue.png?test=${cache_buster}" "$output_plugin"; then
+  echo "generated plugin does not contain the test-branch icon URL" >&2
+  exit 1
+fi
+
+if grep -Fq '/main/assets/bilibili-blue.png' "$output_plugin"; then
+  echo "generated plugin still contains a main-branch icon URL" >&2
   exit 1
 fi
 

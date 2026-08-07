@@ -2,6 +2,7 @@
 #!desc = 捕获 Bilibili 真实分片并手动串行测速；仅把后续请求改到已验证兼容的最快普通 UPOS 候选。
 #!author = JunchengLu & Codex
 #!homepage = https://github.com/JunchengLu218/Bilibili-US-Accelerator
+#!icon = https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/main/assets/bilibili-blue.png
 #!tag = Bilibili,CDN,accelerator,experimental
 #!system = iOS,iPadOS
 #!system_version = 15
