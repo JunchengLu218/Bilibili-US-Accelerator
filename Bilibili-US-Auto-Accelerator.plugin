@@ -1,18 +1,18 @@
 #!name = Bilibili US Auto Accelerator (Experimental)
-#!desc = 首次请求自动测试 8 个普通 UPOS 候选；失败时始终保留原始播放路线，也可从节点菜单手动重测。
+#!desc = 可选择手动或首次请求自动测试 8 个普通 UPOS 候选；失败时始终保留原始播放路线。
 #!author = JunchengLu & Codex
 #!homepage = https://github.com/JunchengLu218/Bilibili-US-Accelerator
 #!icon = https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/main/assets/variants/bilibili-black-pink.png
-#!tag = Bilibili,CDN,accelerator,automatic,experimental
+#!tag = Bilibili,CDN,accelerator,manual,automatic,experimental
 #!system = iOS,iPadOS
 #!system_version = 15
 #!loon_version = 3.5.0(969)
 #!type = normal
-#!version = 0.2.1
+#!version = 0.2.2
 
 [Argument]
-# 实验版固定使用自动模式；无缓存时，第一条合格请求会等待串行测速。
-Mode = select,"first-request",tag=测速模式,desc=实验版固定自动测速；成功后改写当前请求，失败则原路放行
+# manual 不阻塞首次播放；first-request 会让无缓存时的第一条合格请求等待串行测速。
+Mode = select,"manual","first-request",tag=测速模式,desc=manual 捕获后手动测速；first-request 首次请求自动测速并应用
 Candidates = input,"upos-sz-mirrorcosov.bilivideo.com,upos-sz-mirroraliov.bilivideo.com,upos-sz-mirrorhwov.bilivideo.com,upos-sz-mirrorali.bilivideo.com,upos-tf-all-hw.bilivideo.com,upos-sz-mirrorhw.bilivideo.com,upos-sz-mirrorcos.bilivideo.com,upos-tf-all-tx.bilivideo.com",tag=候选 CDN,desc=默认测试 3 个海外镜像和 5 个常规节点；非法值会被忽略
 BStarAsStandard = switch,false,tag=将 BStar 作为普通 UPOS,desc=开启后使用同一候选池，但单独测速并写入独立缓存
 PCDNStrategy = select,"best-upos","xy-usource","passthrough",tag=PCDN 策略,desc=best-upos 会先捕获并测速；xy-usource 只接受合法 Bilibili 来源主机

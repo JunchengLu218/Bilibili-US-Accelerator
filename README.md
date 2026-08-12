@@ -4,10 +4,10 @@
 
 仓库同时发布两个版本：
 
-| 版本 | 插件文件 | 工作方式 | 图标 |
-| --- | --- | --- | --- |
-| 稳定版 `0.1.8` | [`Bilibili-US-Accelerator.plugin`](Bilibili-US-Accelerator.plugin) | 捕获真实分片后，由用户手动测试 8 个候选 | 蓝色 |
-| 实验版 `0.2.1` | [`Bilibili-US-Auto-Accelerator.plugin`](Bilibili-US-Auto-Accelerator.plugin) | 没有有效缓存时，自动测试 8 个候选并改写当前请求 | 黑粉色 |
+| 版本 | 插件文件 | 工作方式 |
+| --- | --- | --- |
+| 稳定版 `0.1.8` | [`Bilibili-US-Accelerator.plugin`](Bilibili-US-Accelerator.plugin) | 捕获真实分片后，由用户手动测试 8 个候选 |
+| 实验版 `0.2.2` | [`Bilibili-US-Auto-Accelerator.plugin`](Bilibili-US-Auto-Accelerator.plugin) | 可在手动测速和首次请求自动测速之间切换 |
 
 > [!IMPORTANT]
 > 两个插件会匹配同一批 Bilibili 视频请求，**只能启用其中一个**。同时启用会造成重复捕获、重复测速或无法判断是哪一个插件完成了改写。
@@ -22,7 +22,7 @@
 https://github.com/JunchengLu218/Bilibili-US-Accelerator/releases/latest/download/Bilibili-US-Accelerator.plugin
 ```
 
-### 实验版：8 候选自动测速
+### 实验版：8 候选手动 / 自动测速
 
 [在 Loon 中安装实验版](https://www.nsloon.com/openloon/import?plugin=https%3A%2F%2Fgithub.com%2FJunchengLu218%2FBilibili-US-Accelerator%2Freleases%2Flatest%2Fdownload%2FBilibili-US-Auto-Accelerator.plugin)
 
@@ -63,7 +63,12 @@ HTTP 测试节点只是打开脚本菜单的入口，**不要把它选为全局�
 
 ## 实验版怎么使用
 
-实验版固定使用 `first-request` 自动模式：
+实验版默认使用 `manual`，也可以在插件设置的“测速模式”中选择：
+
+- `manual`：行为与稳定版相同。播放请求只捕获样本并立即放行，再从节点菜单手动测速。
+- `first-request`：当前网络没有有效缓存时，让第一条合格请求等待自动测速；成功后立即应用本轮结果。
+
+选择 `first-request` 后，自动流程如下：
 
 1. 当前网络没有有效结果时，第一条符合条件的视频请求会先保存安全快照；
 2. 脚本按顺序测试 8 个候选；
@@ -73,7 +78,7 @@ HTTP 测试节点只是打开脚本菜单的入口，**不要把它选为全局�
 
 如果所有候选失败、脚本超时、缓存无法保存或 URL 无法安全改写，当前请求会原路放行。并发到达的其他分片不会重复启动测速。自动失败后还有 5 分钟冷却，避免每个分片都重新测试。
 
-实验版仍保留节点菜单中的“Bilibili CDN 测速并应用”，用于已经捕获样本后的手动重测或排错；这不会把实验版改成稳定版的日常工作方式。
+无论当前选择哪种模式，实验版都保留节点菜单中的“Bilibili CDN 测速并应用”。在 `manual` 模式下这是正常测速入口；在 `first-request` 模式下可用于手动重测或排错。
 
 ## 默认 8 个候选
 
@@ -99,11 +104,11 @@ upos-tf-all-tx.bilivideo.com
 
 ## 所有可配置选项
 
-稳定版和实验版使用相同的安全分类与测速参数，只有 `Mode` 被各自固定。
+稳定版和实验版使用相同的安全分类与测速参数。稳定版固定为 `manual`；实验版可以选择 `manual` 或 `first-request`。
 
 | 选项 | 可选值或格式 | 默认值 | 功能与注意事项 |
 | --- | --- | --- | --- |
-| `Mode` 测速模式 | 稳定版仅 `manual`；实验版仅 `first-request` | 由版本固定 | `manual` 只捕获并立即放行普通请求，之后由用户运行节点菜单；`first-request` 会让无缓存时的第一条请求等待自动测速。 |
+| `Mode` 测速模式 | 稳定版仅 `manual`；实验版为 `manual` / `first-request` | `manual` | `manual` 只捕获并立即放行普通请求，之后由用户运行节点菜单；`first-request` 会让无缓存时的第一条请求等待自动测速。 |
 | `Candidates` 候选 CDN | 逗号分隔的 Host 列表 | 上述 8 个 | 可以删减或调整测试顺序。只接受普通 `bilivideo.com` UPOS/HK 主机；重复项会去重，非法项会忽略；如果全部非法则恢复内置 8 候选。不要填写协议、路径、IP 或外部域名。 |
 | `BStarAsStandard` | 开 / 关 | 关 | 关闭时 BStar 请求原路放行；开启后使用同一候选池测速，但结果存入独立的 `standard-bstar` 缓存，不会直接复用普通 UPOS 结论。非标准端口仍会安全放行。 |
 | `PCDNStrategy` | `best-upos` / `xy-usource` / `passthrough` | `best-upos` | `best-upos` 把 PCDN 作为独立类型捕获并用 8 候选测速；`xy-usource` 只在 URL 中存在合法 Bilibili 来源主机时改回该来源；`passthrough` 完全不处理 PCDN。 |
@@ -144,76 +149,6 @@ upos-tf-all-tx.bilivideo.com
 - Akamai、BStar、直播等默认放行类型不应被普通 UPOS 结果误改写。
 
 Node.js 测试只能证明脚本逻辑，不能替代 iPhone/iPad 上对 Loon 生命周期、MitM、真实签名兼容性和具体网络速度的验证。
-
-## 原理与进阶
-
-- [自动/手动测速 8 候选测试说明](docs/loon-auto-cdn-auto-manual-8-test.zh-CN.md)
-- [自动 CDN 测速与选择：设计、算法、边界和测试方案](docs/loon-auto-cdn-benchmark-design.zh-CN.md)
-- [初版实现逐段详解](docs/loon-auto-cdn-initial-implementation.zh-CN.md)
-- [BiliUniverse/Redirect 的原理、安装、验证与局限](docs/biliuniverse-redirect-loon-guide.zh-CN.md)
-- [realzza/bilibili-accelerator 实现分析](docs/realzza-bilibili-accelerator-analysis.zh-CN.md)
-
-## 开发和发布
-
-```text
-.
-├── Bilibili-US-Accelerator.plugin       # 稳定手动版
-├── Bilibili-US-Auto-Accelerator.plugin  # 实验自动版
-├── assets/                              # 发布图标、备用图标和源文件
-├── docs/                                # 设计、使用和排错文档
-├── scripts/                             # Loon 脚本及验证/发布工具
-└── test/                                # Node.js 自动化测试
-```
-
-运行两套验证：
-
-```bash
-bash scripts/validate.sh
-bash scripts/validate-auto.sh
-```
-
-生成指向测试分支的自动版插件：
-
-```bash
-bash scripts/prepare-auto-test-plugin.sh <test-branch>
-```
-
-生成固定引用某个版本 tag 的 Release 资产：
-
-```bash
-bash scripts/prepare-release-assets.sh v0.1.8
-```
-
-推送与稳定版 `#!version` 一致的 `v*` tag 后，GitHub Actions 会再次验证两个插件，并把稳定版和实验版同时附加到同一个 GitHub Release。
-
-## 图标资源维护
-
-[`assets/bilibili-blue.png`](assets/bilibili-blue.png) 是稳定版图标；[`assets/variants/bilibili-black-pink.png`](assets/variants/bilibili-black-pink.png) 是实验版图标。两者都已去除完全透明的外围边框，以免在 Loon 中显得偏小。
-
-```text
-assets/
-├── bilibili-blue.png
-├── variants/
-│   ├── bilibili-black-pink.png
-│   ├── bilibili-pink.png
-│   ├── bilibili-pink-smile.png
-│   └── bilibili-pink-wordmark.png
-└── source/
-    ├── icns/
-    └── exported-png/
-```
-
-| 成品图标 | 画布尺寸 | 用途 |
-| --- | ---: | --- |
-| `bilibili-blue.png` | 872 × 872 | 稳定版正式图标 |
-| `bilibili-black-pink.png` | 824 × 824 | 实验版正式图标 |
-| `bilibili-pink.png` | 872 × 872 | 备用粉色版本 |
-| `bilibili-pink-smile.png` | 872 × 872 | 备用微笑电视版本 |
-| `bilibili-pink-wordmark.png` | 844 × 844 | 备用文字标志版本 |
-
-`assets/source/icns/` 保存原始 ICNS，`assets/source/exported-png/` 保存未裁剪的多分辨率 PNG。插件不应直接引用 `source/` 文件，因为透明安全区会让图标显示偏小。正式图标的公开路径应保持稳定；新增文件使用小写 kebab-case 名称并保留 PNG 透明通道。
-
-图标由仓库维护者收集和整理，目前尚未记录每个文件的原始下载页面和单独许可。用于本仓库以外的再分发前，应先核实并补充来源和许可条款。Bilibili 名称、标志及相关商标属于其权利人；本项目不隶属于 Bilibili，也未获得其背书，MIT 许可证不授予第三方商标或图标权利。
 
 ## 更新
 

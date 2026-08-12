@@ -19,7 +19,7 @@ grep -Fq '#!loon_version = 3.5.0(969)' "$plugin"
 grep -Fq '#!icon = https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/main/assets/variants/bilibili-black-pink.png' "$plugin"
 grep -Fq 'https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/main/scripts/bilibili-auto-cdn.js' "$plugin"
 grep -Fq '#!type = normal' "$plugin"
-grep -Fq 'Mode = select,"first-request"' "$plugin"
+grep -Fq 'Mode = select,"manual","first-request"' "$plugin"
 grep -Fq 'generic script-path=' "$plugin"
 grep -Eq '^generic .*tag=Bilibili CDN 测速并应用.*timeout=180.*img-url=atom\.system.*enable=true' "$plugin"
 grep -Fq 'Candidates = input,"upos-sz-mirrorcosov.bilivideo.com,upos-sz-mirroraliov.bilivideo.com,upos-sz-mirrorhwov.bilivideo.com,upos-sz-mirrorali.bilivideo.com,upos-tf-all-hw.bilivideo.com,upos-sz-mirrorhw.bilivideo.com,upos-sz-mirrorcos.bilivideo.com,upos-tf-all-tx.bilivideo.com"' "$plugin"
@@ -64,7 +64,7 @@ bash -n "$prepare_script"
 bash "$prepare_script" loon-3.5.0-test "$temporary_plugin" >/dev/null
 grep -Fq '/loon-3.5.0-test/scripts/bilibili-auto-cdn.js?test=' "$temporary_plugin"
 grep -Fq '/loon-3.5.0-test/assets/variants/bilibili-black-pink.png?test=' "$temporary_plugin"
-grep -Fq 'Mode = select,"first-request"' "$temporary_plugin"
+grep -Fq 'Mode = select,"manual","first-request"' "$temporary_plugin"
 grep -Eq '^generic .*tag=Bilibili CDN 测速并应用.*timeout=180.*img-url=atom\.system.*enable=true' "$temporary_plugin"
 if grep -Fq '/main/scripts/bilibili-auto-cdn.js' "$temporary_plugin"; then
   echo "generated test plugin must not load the main-branch script" >&2
@@ -75,4 +75,4 @@ if grep -Fq '/main/assets/variants/bilibili-black-pink.png' "$temporary_plugin";
   exit 1
 fi
 
-echo "auto plugin validation passed"
+echo "experimental plugin validation passed"

@@ -6,3 +6,6 @@ README-for-author.md
 
 # Local release artifacts are generated from the canonical plugin manifests.
 dist/
+
+# Documents for personal use
+docs/

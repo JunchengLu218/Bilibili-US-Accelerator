@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v6
       - name: Validate stable manual plugin
         run: ./scripts/validate.sh
-      - name: Validate experimental automatic plugin
+      - name: Validate experimental manual and automatic plugin
         run: ./scripts/validate-auto.sh
       - name: Validate release asset builder
         run: |

@@ -9,7 +9,7 @@ release_ref="${1:-}"
 output_dir="${2:-dist}"
 repo_slug="${GITHUB_REPOSITORY:-JunchengLu218/Bilibili-US-Accelerator}"
 stable_plugin="Bilibili-US-Accelerator.plugin"
-automatic_plugin="Bilibili-US-Auto-Accelerator.plugin"
+experimental_plugin="Bilibili-US-Auto-Accelerator.plugin"
 
 if [[ ! "$release_ref" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   echo "usage: $0 <vMAJOR.MINOR.PATCH> [output-directory]" >&2
@@ -29,7 +29,7 @@ fi
 
 mkdir -p "$output_dir"
 
-for source_plugin in "$stable_plugin" "$automatic_plugin"; do
+for source_plugin in "$stable_plugin" "$experimental_plugin"; do
   destination_plugin="${output_dir}/${source_plugin}"
   sed \
     -e "s#https://raw.githubusercontent.com/${repo_slug}/main/scripts/#https://raw.githubusercontent.com/${repo_slug}/${release_ref}/scripts/#g" \
