@@ -1,4 +1,4 @@
-name: Validate plugin
+name: Validate plugins
 
 on:
   push:
@@ -13,5 +13,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Validate stable Loon plugin
+      - name: Validate stable manual plugin
         run: ./scripts/validate.sh
+      - name: Validate experimental automatic plugin
+        run: ./scripts/validate-auto.sh
+      - name: Validate release asset builder
+        run: |
+          stable_version="$(sed -n 's/^#!version = //p' Bilibili-US-Accelerator.plugin)"
+          ./scripts/prepare-release-assets.sh "v${stable_version}" "${RUNNER_TEMP}/release-assets"

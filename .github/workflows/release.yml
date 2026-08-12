@@ -1,4 +1,4 @@
-name: Publish stable release
+name: Publish stable and experimental plugins
 
 on:
   push:
@@ -13,19 +13,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Validate stable Loon plugin
+      - name: Validate stable manual plugin
         run: ./scripts/validate.sh
+      - name: Validate experimental automatic plugin
+        run: ./scripts/validate-auto.sh
       - name: Verify tag matches plugin version
         shell: bash
         run: |
           version="$(sed -n 's/^#!version = //p' Bilibili-US-Accelerator.plugin)"
           test "v${version}" = "${GITHUB_REF_NAME}"
+      - name: Prepare immutable release assets
+        run: ./scripts/prepare-release-assets.sh "${GITHUB_REF_NAME}" dist
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${GITHUB_REF_NAME}" \
-            Bilibili-US-Accelerator.plugin \
+            dist/Bilibili-US-Accelerator.plugin \
+            dist/Bilibili-US-Auto-Accelerator.plugin \
             --verify-tag \
-            --title "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME} - Manual stable and automatic experimental" \
             --generate-notes

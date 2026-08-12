@@ -1,2 +1,8 @@
+# macOS Finder metadata must never be committed with image assets.
 .DS_Store
+
+# Maintainer-only notes.
 README-for-author.md
+
+# Local release artifacts are generated from the canonical plugin manifests.
+dist/

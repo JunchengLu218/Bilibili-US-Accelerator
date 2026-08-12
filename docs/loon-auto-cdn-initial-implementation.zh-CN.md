@@ -1,8 +1,8 @@
 # Bilibili US Auto Accelerator 初版源码详解
 
 > 对应版本：`Bilibili-US-Auto-Accelerator.plugin` 0.1.1
-> 对应脚本：`scripts/bilibili-auto-cdn.js`  
-> 读者：第一次接触 Loon 插件或 JavaScript 的用户  
+> 对应脚本：`scripts/bilibili-auto-cdn.js`<br>
+> 读者：第一次接触 Loon 插件或 JavaScript 的用户<br>
 > 状态：本地逻辑测试通过，仍需 iPhone/iPad 与目标 Loon 版本实机验证
 
 ## 一、这个初版已经做了什么

@@ -1,24 +1,30 @@
-# Loon 自动/手动测速 4 候选测试分支说明
+# Loon 8 候选手动稳定版与自动实验版说明
 
-本文对应 `test-auto-manual-4` 分支和插件版本 `0.2.0`。这是实验测试版，目标是验证 Loon 3.5.0 中“首次请求自动测速”能否稳定完成；它不会替代当前正在验证的 0.1.6 手动版。
+本文对应稳定手动版 `0.1.8` 和实验自动版 `0.2.1`。两个插件使用同一套安全分类、8 候选测速和缓存实现，但入口模式不同。
 
 ## 1. 两种测速模式
 
-插件设置中的“测速模式”有两个值：
+两种模式现在分别由两个发布插件固定，避免用户误切模式：
 
-- `manual`：默认值。先播放视频捕获真实分片，再到“仪表 → 所有节点 → 长按任一节点 → Bilibili CDN 测速并应用”手动测速。
-- `first-request`：当前网络没有有效结果时，让第一条合格视频请求等待串行测速；成功后立即把这一条请求改到最快兼容候选。
+- 稳定版 `Bilibili-US-Accelerator.plugin` 固定 `manual`：先播放视频捕获真实分片，再到“仪表 → 所有节点 → 长按 HTTP 测试节点 → Bilibili CDN 测速并应用”手动测速。
+- 实验版 `Bilibili-US-Auto-Accelerator.plugin` 固定 `first-request`：当前网络没有有效结果时，让第一条合格视频请求等待串行测速；成功后立即把这一条请求改到最快兼容候选。
 
-无论选择哪一种模式，后续请求都会优先读取同一套“网络 + profile + 设置指纹”缓存。模式本身不改变测速结果的兼容性，因此手动得到的有效结果也能供自动模式使用，反之亦然。
+两个插件不能同时启用。切换版本前先关闭另一个；在网络、profile 和设置指纹一致时，后续请求会读取同一套兼容缓存。
 
-## 2. 默认 4 个候选
+## 2. 默认 8 个候选
 
 ```text
+upos-sz-mirrorcosov.bilivideo.com
 upos-sz-mirroraliov.bilivideo.com
-upos-tf-all-hw.bilivideo.com
-upos-tf-all-tx.bilivideo.com
+upos-sz-mirrorhwov.bilivideo.com
 upos-sz-mirrorali.bilivideo.com
+upos-tf-all-hw.bilivideo.com
+upos-sz-mirrorhw.bilivideo.com
+upos-sz-mirrorcos.bilivideo.com
+upos-tf-all-tx.bilivideo.com
 ```
+
+前三个带 `ov` 的主机是海外镜像，其余五个是常规节点。这里的顺序只是串行测试顺序，不代表固定优先级；最终仍按实测有效吞吐量排名。
 
 候选必须是允许的普通 Bilibili UPOS/HK 主机。Akamai、BStar、MCDN、IP 地址和任意外部域名不能作为普通测速目标，因为 Probe 会携带真实视频的签名路径。
 
@@ -29,7 +35,7 @@ upos-sz-mirrorali.bilivideo.com
 1. 分类当前视频请求，并检查该 profile 是否允许改写；
 2. 保存不含 Cookie 的短期请求快照；
 3. 获取当前网络和 profile 的测速锁；
-4. 使用当前真实视频路径、签名和固定 Range，串行测试 4 个候选；
+4. 使用当前真实视频路径、签名和固定 Range，串行测试 8 个候选；
 5. 只有返回正确 `206`、正确 `Content-Range` 和匹配二进制长度的候选才能进入排名；
 6. 保存最快兼容结果；
 7. 仅替换当前请求的 Host，原路径和查询参数保持不变；
@@ -67,22 +73,36 @@ upos-sz-mirrorali.bilivideo.com
 候选数 × 每候选 Range 大小 × 轮数
 ```
 
-例如 4 候选 × 512 KiB × 1 轮约为 2 MiB。选择 2 MiB × 3 轮约为 24 MiB，并可能显著延迟第一次播放，不适合作为自动模式的首次测试。
+例如 8 候选 × 512 KiB × 1 轮约为 4 MiB。选择 2 MiB × 3 轮约为 48 MiB；如果多个候选一直等到 5 秒超时，整轮还可能接近 120 秒，不适合作为自动模式的首次测试。插件测速入口使用 180 秒超时，以覆盖最大配置的收尾开销，但这不代表推荐让首次播放等待这么久。
 
-## 6. 安装测试插件
+## 6. 安装插件
 
-在 Loon 中导入：
+稳定版：
 
 ```text
-https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/test-auto-manual-4/Bilibili-US-Auto-Accelerator.test.plugin
+https://github.com/JunchengLu218/Bilibili-US-Accelerator/releases/latest/download/Bilibili-US-Accelerator.plugin
 ```
 
-测试时请关闭其他会改写 Bilibili 视频 Host 的插件，否则请求可能先被另一条规则修改，无法判断本插件是否生效。
+实验版：
+
+```text
+https://github.com/JunchengLu218/Bilibili-US-Accelerator/releases/latest/download/Bilibili-US-Auto-Accelerator.plugin
+```
+
+开发者需要测试尚未合并的分支时，在仓库根目录运行：
+
+```bash
+bash scripts/prepare-auto-test-plugin.sh <test-branch>
+```
+
+把生成的 `Bilibili-US-Auto-Accelerator.test.plugin` 与该分支一起提交并推送后，再使用脚本输出的 Raw URL。主分支不保存这个临时生成文件，以免它长期指向已经过期的测试分支。
+
+测试时请关闭另一个版本和其他会改写 Bilibili 视频 Host 的插件，否则请求可能先被另一条规则修改，无法判断本插件是否生效。
 
 ## 7. 自动模式验证步骤
 
-1. 导入插件并确认版本为 `0.2.0`；
-2. 将“测速模式”改为 `first-request`；
+1. 导入插件并确认版本为 `0.2.1`；
+2. 确认“测速模式”显示实验版固定的 `first-request`；
 3. 使用上面的推荐参数并将日志级别设为 `INFO`；
 4. 开启 Loon VPN，完全退出 Bilibili App 后重新打开；
 5. 播放一个未缓存视频并观察第一次起播；
@@ -92,7 +112,7 @@ https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/test-aut
 
 ```text
 Start first-request benchmark for standard-upos
-Probe 1/4: ...
+Probe 1/8: ...
 Apply newly benchmarked host ... for standard-upos
 ```
 
@@ -105,9 +125,9 @@ Apply cached host ... for standard-upos
 
 如果全部失败，应看到“keep original host”或冷却日志，视频请求应继续使用原始 Host，而不是消失或无限等待。
 
-## 8. 回到手动模式
+## 8. 改用稳定手动版
 
-如果自动模式导致第一次播放等待过久，直接把“测速模式”改回 `manual`。手动模式不会在普通请求中发起 Probe，只捕获样本并立即放行，然后由用户从节点长按菜单启动测速。
+如果自动模式导致第一次播放等待过久，关闭实验版并安装稳定版 `0.1.8`。稳定版不会在普通请求中发起 Probe，只捕获样本并立即放行，然后由用户从 HTTP 测试节点的长按菜单启动测速。该 HTTP 节点只用于打开菜单，不要把它选成全局出口。
 
 ## 9. 代码对应关系
 

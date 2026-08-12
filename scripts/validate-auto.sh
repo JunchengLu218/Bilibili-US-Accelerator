@@ -5,7 +5,7 @@ plugin="Bilibili-US-Auto-Accelerator.plugin"
 script="scripts/bilibili-auto-cdn.js"
 test_file="test/bilibili-auto-cdn.test.js"
 prepare_script="scripts/prepare-auto-test-plugin.sh"
-icon="assets/bilibili-blue.png"
+icon="assets/variants/bilibili-black-pink.png"
 node_bin="${NODE_BIN:-node}"
 
 test -f "$plugin"
@@ -16,12 +16,13 @@ test -s "$icon"
 
 grep -Eq '^#!version = [0-9]+\.[0-9]+\.[0-9]+$' "$plugin"
 grep -Fq '#!loon_version = 3.5.0(969)' "$plugin"
-grep -Fq '#!icon = https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/main/assets/bilibili-blue.png' "$plugin"
+grep -Fq '#!icon = https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/main/assets/variants/bilibili-black-pink.png' "$plugin"
 grep -Fq 'https://raw.githubusercontent.com/JunchengLu218/Bilibili-US-Accelerator/main/scripts/bilibili-auto-cdn.js' "$plugin"
 grep -Fq '#!type = normal' "$plugin"
-grep -Fq 'Mode = select,"manual","first-request"' "$plugin"
+grep -Fq 'Mode = select,"first-request"' "$plugin"
 grep -Fq 'generic script-path=' "$plugin"
-grep -Eq '^generic .*tag=Bilibili CDN 测速并应用.*timeout=120.*img-url=atom\.system.*enable=true' "$plugin"
+grep -Eq '^generic .*tag=Bilibili CDN 测速并应用.*timeout=180.*img-url=atom\.system.*enable=true' "$plugin"
+grep -Fq 'Candidates = input,"upos-sz-mirrorcosov.bilivideo.com,upos-sz-mirroraliov.bilivideo.com,upos-sz-mirrorhwov.bilivideo.com,upos-sz-mirrorali.bilivideo.com,upos-tf-all-hw.bilivideo.com,upos-sz-mirrorhw.bilivideo.com,upos-sz-mirrorcos.bilivideo.com,upos-tf-all-tx.bilivideo.com"' "$plugin"
 grep -Fq 'X-Bili-CDN-Probe' "$script"
 grep -Fq '"binary-mode": true' "$script"
 grep -Fq '"auto-redirect": false' "$script"
@@ -46,9 +47,9 @@ if [[ "$request_count" != "5" ]]; then
   exit 1
 fi
 
-automatic_timeout_count="$(grep -Ec '^http-request .*timeout=90,' "$plugin")"
+automatic_timeout_count="$(grep -Ec '^http-request .*timeout=180,' "$plugin")"
 if [[ "$automatic_timeout_count" != "4" ]]; then
-  echo "expected 4 benchmarkable request entries with a 90-second timeout; found $automatic_timeout_count" >&2
+  echo "expected 4 benchmarkable request entries with a 180-second timeout; found $automatic_timeout_count" >&2
   exit 1
 fi
 
@@ -62,14 +63,14 @@ trap 'rm -f "$temporary_plugin"' EXIT
 bash -n "$prepare_script"
 bash "$prepare_script" loon-3.5.0-test "$temporary_plugin" >/dev/null
 grep -Fq '/loon-3.5.0-test/scripts/bilibili-auto-cdn.js?test=' "$temporary_plugin"
-grep -Fq '/loon-3.5.0-test/assets/bilibili-blue.png?test=' "$temporary_plugin"
-grep -Fq 'Mode = select,"manual","first-request"' "$temporary_plugin"
-grep -Eq '^generic .*tag=Bilibili CDN 测速并应用.*timeout=120.*img-url=atom\.system.*enable=true' "$temporary_plugin"
+grep -Fq '/loon-3.5.0-test/assets/variants/bilibili-black-pink.png?test=' "$temporary_plugin"
+grep -Fq 'Mode = select,"first-request"' "$temporary_plugin"
+grep -Eq '^generic .*tag=Bilibili CDN 测速并应用.*timeout=180.*img-url=atom\.system.*enable=true' "$temporary_plugin"
 if grep -Fq '/main/scripts/bilibili-auto-cdn.js' "$temporary_plugin"; then
   echo "generated test plugin must not load the main-branch script" >&2
   exit 1
 fi
-if grep -Fq '/main/assets/bilibili-blue.png' "$temporary_plugin"; then
+if grep -Fq '/main/assets/variants/bilibili-black-pink.png' "$temporary_plugin"; then
   echo "generated test plugin must not load the icon from main" >&2
   exit 1
 fi
